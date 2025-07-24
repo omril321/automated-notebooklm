@@ -1,0 +1,35 @@
+{
+  "name": "automated-notebooklm",
+  "version": "1.0.0",
+  "description": "Automate Google NotebookLM for document summarization using Playwright",
+  "main": "summarize.ts",
+  "scripts": {
+    "auth": "ts-node login.ts",
+    "summarize": "ts-node summarize.ts"
+  },
+  "keywords": [
+    "playwright",
+    "automation",
+    "google",
+    "notebooklm"
+  ],
+  "author": "Omri Lavi",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/omril321/automated-notebooklm.git"
+  },
+  "license": "ISC",
+  "dependencies": {
+    "chalk": "^4.1.2",
+    "playwright": "^1.39.0",
+    "ts-node": "^10.9.1",
+    "typescript": "^5.2.2",
+    "user-agents": "^1.1.609",
+    "yargs": "^17.7.2"
+  },
+  "devDependencies": {
+    "@types/node": "^20.8.3",
+    "@types/user-agents": "^1.0.4",
+    "@types/yargs": "^17.0.25"
+  }
+}
