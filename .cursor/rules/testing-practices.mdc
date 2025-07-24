@@ -1,0 +1,52 @@
+---
+globs: *.test.ts,*.test.js,*.spec.ts,*.spec.js,**/__tests__/**
+description: Testing best practices for file location and implementation details
+---
+
+# Testing Best Practices
+
+## Test File Location
+
+- Place test files **next to the files they test**, not in separate test directories
+- Use naming conventions: `filename.test.ts` or `filename.spec.ts`
+- For complex modules, you can use `__tests__/` subdirectories within the same folder
+
+## What to Test
+
+- **Public API**: Test the external interface of your modules
+- **Exported functions**: Only test functions that are actually used elsewhere
+- **Behavior**: Focus on what the code does, not how it does it
+- **Integration points**: Test how modules work together
+
+## What NOT to Test
+
+- **Internal implementation details**: Don't test private/internal functions
+- **Unused functions**: If a function isn't exported or used anywhere else, it shouldn't exist
+- **Implementation specifics**: Don't test internal variables, private methods, or implementation details that could change without affecting the public API
+
+## Guidelines
+
+- Remove or refactor unused functions instead of testing them
+- Keep tests focused on the public contract
+- If you need to test internal details, consider if they should be exposed or if the module design needs refactoring
+- Test behavior and outcomes, not implementation steps
+
+## Example Structure
+
+```
+src/
+  services/
+    audio-stitcher/
+      index.ts
+      index.test.ts        ✅ Test next to implementation
+      utils.ts
+      utils.test.ts        ✅ Test next to implementation
+    gemini.ts
+    gemini.test.ts         ✅ Test next to implementation
+```
+
+## References
+
+- Current project structure shows good examples in [src/services/audio-stitcher/](mdc:src/services/audio-stitcher/) and [src/services/google-tts/](mdc:src/services/google-tts/)
+- Test setup configuration in [tests/setup.ts](mdc:tests/setup.ts)
+- Vitest configuration in [vitest.config.ts](mdc:vitest.config.ts)

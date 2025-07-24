@@ -1,0 +1,29 @@
+---
+description: Clean code principles emphasizing small, single-purpose functions
+globs:
+alwaysApply: true
+---
+
+Summary:
+Encourage clean, modular code through small, single-purpose functions with clear inputs and outputs.
+
+Guidelines:
+
+- Functions must follow the Single Responsibility Principle.
+- Keep functions short — ideally under one screen of code.
+- Use descriptive names for clarity (e.g., fetchUserData, not getData).
+- Prefer pure functions; make side effects explicit when necessary.
+- Avoid deep nesting — use guard clauses and helper functions.
+- Follow consistent formatting and avoid code duplication.
+
+Avoid:
+
+- Monolithic functions doing multiple things
+- Vague or generic naming
+- Repeated logic
+- Over-commenting obvious code
+- Unclear control flow due to nesting
+- Best Practices Enforcement:
+- Prioritize in code reviews
+- Use linters/static analysis for complexity and style issues
+- Encourage refactoring and pairing to share clean code habits

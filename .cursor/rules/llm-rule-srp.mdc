@@ -1,0 +1,20 @@
+---
+description: LLM tool definitions must follow Single Responsibility Principle with service delegation
+globs: **/*.ts*
+alwaysApply: false
+---
+
+Summary:
+LLM tool definitions must act as thin wrappers that delegate functionality to well-defined, single-responsibility services.
+
+Guidelines:
+
+- Keep tool definitions minimal — focus on input schema, metadata, and delegation.
+- All core logic must live in a dedicated service class with clear inputs and outputs.
+- Services should be testable, reusable, and adhere to Single Responsibility Principle.
+- Tool execute functions should be short, readable, and primarily call a service.
+
+Avoid:
+
+- Embedding complex logic directly in the tool definition
+- Mixing concerns (e.g., schema + business logic + side effects) in one layer

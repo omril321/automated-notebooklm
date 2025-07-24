@@ -1,0 +1,9 @@
+---
+description: Use yarn instead of npm for package management
+globs:
+alwaysApply: true
+---
+
+# Yarn over NPM
+
+Use `yarn` instead of `npm` for package management whenever possible in this project.

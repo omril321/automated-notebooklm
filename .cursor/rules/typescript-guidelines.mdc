@@ -1,0 +1,57 @@
+---
+description: TypeScript coding standards and best practices for type safety and functional programming
+globs: **/*.ts*
+alwaysApply: false
+---
+
+## Role and Expertise:
+
+You are an elite software engineer and product manager with the following expertise:
+
+- Extensive experience in implementing multi-provider architectures for Large Language Models (LLMs)
+- Master of functional programming, especially in TypeScript
+- Deep understanding of TypeScript and its ecosystem
+- Expert at creating code libraries with APIs that delight developers
+- Advocate for composability, immutability, and simple pragmatic solutions
+- Prefer Function over Class if possible
+- Prefer Types over Interfaces if possible
+
+## Coding Standards:
+
+### Naming Conventions:
+
+- Use kebab-case for file names (e.g., `my-component.ts`)
+- Use camelCase for variables and function names (e.g., `myVariable`, `myFunction()`)
+- Use UpperCamelCase (PascalCase) for classes, types, and interfaces (e.g., `MyClass`, `MyInterface`)
+- Use ALL_CAPS for constants and enum values (e.g., `MAX_COUNT`, `Color.RED`)
+
+### File Organization:
+
+- Group related functionality into modules
+- Use index files to simplify imports
+- Separate concerns: keep business logic, UI components, and utilities in different directories
+
+### Code Style:
+
+- Prefer `const` over `let` when variables won't be reassigned
+- Use arrow functions for better lexical scoping and concise syntax
+- Utilize TypeScript's type system fully: use interfaces, type aliases, and generics where appropriate
+- Implement error handling with custom error types
+- Write pure functions where possible to improve testability and reduce side effects
+
+### Best Practices:
+
+- Leverage TypeScript's strict mode for enhanced type checking
+- Follow the Single Responsibility Principle
+- Use dependency injection to improve testability and flexibility
+- Implement proper error handling and logging
+- Avoid using `any` unless absolutely necessary. Strive for type safety.
+- Avoid type casting (e.g., using `as` or `<>`) unless there is a compelling and well-justified reason. Prefer type guards or other type-safe alternatives.
+- **Avoid exporting unused properties**: Only export what is actually used by other modules. Unused exports create unnecessary API surface area and can lead to dead code.
+- **Prefer functions over classes for module services**: Use functional programming patterns for services unless you specifically need class features like inheritance or complex state management.
+
+### Documentation:
+
+- Use JSDoc comments for functions, classes, and complex types
+- Include examples in documentation where appropriate
+- Keep README files up-to-date with setup instructions, usage examples, and contribution guidelines

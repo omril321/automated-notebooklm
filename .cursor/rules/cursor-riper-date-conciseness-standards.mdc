@@ -1,0 +1,101 @@
+---
+description: Memory bank standards for date accuracy and content conciseness in CursorRIPER
+globs:
+alwaysApply: true
+---
+
+# Memory Bank Standards: Date Accuracy & Content Conciseness
+
+## 🎯 Purpose
+
+This roll ensures memory bank files maintain accurate dates and concise content when working with the CursorRIPER♦Σ memory system.
+
+## 📅 Date Accuracy Standards
+
+### Required Actions
+
+1. **Always check current date** before updating any memory bank file:
+
+   ```bash
+   date
+   ```
+
+2. **Use exact current date** in "Updated" field:
+
+   ```markdown
+   _v1.X | Created: YYYY-MM-DD | Updated: 2025-07-08_
+   ```
+
+3. **Never assume or remember dates** from previous sessions
+
+### Validation
+
+- ✅ Date format: DD-MM-YYYY
+- ✅ Date is current (not from previous sessions)
+- ✅ All memory bank files use same date for batch updates
+
+## 📝 Content Conciseness Standards
+
+### Memory Bank Content Rules
+
+- **High-level overview only** - No implementation details
+- **Patterns and decisions** - Not code examples
+- **Essential information** - Not verbose explanations
+- **Reference to code** - Not duplicate code content
+
+### Content Validation Checklist
+
+Before updating memory bank files, verify:
+
+- ❓ Is this information essential for project context?
+- ❓ Does this belong in code/docs instead?
+- ❓ Can this be expressed more concisely?
+- ❓ Is this a decision/pattern or implementation detail?
+
+### Specific Guidelines by File Type
+
+#### Tech Context (σ₃)
+
+- ✅ Architecture patterns and decisions
+- ✅ Technology stack overview
+- ✅ Key design patterns (without implementation)
+- ❌ Detailed code examples
+- ❌ Configuration file contents
+- ❌ Verbose API documentation
+
+#### Progress Tracker (σ₅)
+
+- ✅ Status and milestones
+- ✅ Completed tasks summary
+- ✅ Next steps overview
+- ❌ Detailed implementation steps
+- ❌ Code snippets
+- ❌ Verbose technical explanations
+
+#### Active Context (σ₄)
+
+- ✅ Current focus and decisions
+- ✅ Immediate tasks and priorities
+- ✅ Context references
+
+## 🚨 Common Mistakes to Avoid
+
+### Content Issues for techContext.md and progress.md
+
+- ❌ Copying code blocks into memory bank
+- ❌ Including verbose implementation details
+- ❌ Duplicating content from code files
+- ❌ Adding configuration examples
+- ❌ Including detailed API documentation
+
+## ✅ Success Criteria
+
+Memory bank updates are successful when:
+
+- ✅ Date is current and accurate
+- ✅ Content is concise and essential
+- ✅ Information belongs in the correct memory bank files
+- ✅ No unnecessary implementation details included
+- ✅ References to code/docs instead of duplicating content
+
+---

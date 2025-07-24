@@ -1,0 +1,36 @@
+---
+description: Best Practice for LLM Output Parsing with Zod and JSON Schema
+globs:
+alwaysApply: true
+---
+
+# Cursor Rule: llm-zod-jsonschema
+
+## Title
+
+Best Practice for LLM Output Parsing with Zod and JSON Schema
+
+## Rule
+
+- Always use `zod-to-json-schema` to generate a JSON schema from your Zod schema.
+- Inject the generated JSON schema into the LLM prompt to instruct the model on the expected output format.
+- After receiving the LLM output, validate it using the original Zod schema.
+- This ensures the prompt and validation are always in sync, and provides robust, type-safe, fail-fast error handling.
+- Do not use `StructuredOutputParser.fromZodSchema` as the canonical pattern; this approach is now preferred for all LLM output parsing in this project.
+
+## Rationale
+
+This pattern ensures schema/prompt synchronization, leverages Zod's type safety, and provides robust validation for all LLM output in TypeScript projects.
+
+## Example
+
+```ts
+import { z } from "zod";
+import { zodToJsonSchema } from "zod-to-json-schema";
+
+const outputSchema = z.object({ ... });
+const jsonSchema = zodToJsonSchema(outputSchema);
+
+// Inject jsonSchema into the LLM prompt
+// After LLM returns output, validate with outputSchema.parse(output)
+```

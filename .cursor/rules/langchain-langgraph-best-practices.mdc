@@ -1,0 +1,7 @@
+---
+description: Follow LangChain and LangGraph best practices when working with LLM models
+globs:
+alwaysApply: true
+---
+
+Always follow LangChain and LangGraph best practices, especially when working with LLM models. If you're uncertain, look online to ensure what the best practices are.
