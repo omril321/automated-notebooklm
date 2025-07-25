@@ -4,8 +4,8 @@
   "description": "Automate Google NotebookLM for document summarization using Playwright",
   "main": "summarize.ts",
   "scripts": {
-    "auth": "ts-node login.ts",
-    "summarize": "ts-node summarize.ts"
+    "auth": "ts-node src/login.ts",
+    "summarize": "ts-node src/summarize.ts"
   },
   "keywords": [
     "playwright",

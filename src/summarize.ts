@@ -1,11 +1,10 @@
-import { chromium, Page } from "playwright";
-import * as path from "path";
+import { Page } from "playwright";
 import * as fs from "fs";
 import chalk from "chalk";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
-import * as readline from "readline";
-import UserAgent from "user-agents";
+import { initializeBrowser, AUTH_FILE_PATH } from "./browserService";
+import { error, info, success, warning } from "./logger";
 
 // Parse command line arguments
 const argv = yargs(hideBin(process.argv))
@@ -19,7 +18,6 @@ const argv = yargs(hideBin(process.argv))
   .parseSync();
 
 // Constants
-const AUTH_FILE_PATH = path.join(__dirname, "auth.json");
 const NOTEBOOKLM_URL = "https://notebooklm.google.com";
 const LOGIN_URL_PATTERN = /accounts\.google\.com/;
 
@@ -27,7 +25,7 @@ const LOGIN_URL_PATTERN = /accounts\.google\.com/;
  * Placeholder function for future audio generation capability
  */
 function generateAudio(summary: string): void {
-  console.log(chalk.yellow("Audio generation not yet implemented."));
+  warning("Audio generation not yet implemented.");
   console.log(chalk.gray("Summary text that would be converted to audio:"));
   console.log(chalk.gray(summary.substring(0, 100) + "..."));
 }
@@ -38,8 +36,8 @@ function generateAudio(summary: string): void {
 function checkAuthFileExists(): boolean {
   try {
     if (!fs.existsSync(AUTH_FILE_PATH)) {
-      console.error(chalk.red("⚠️  Authentication file not found."));
-      console.error(chalk.red("Please run `yarn auth` to authenticate first."));
+      error("Authentication file not found.");
+      error("Please run `yarn auth` to authenticate first.");
       return false;
     }
 
@@ -48,34 +46,11 @@ function checkAuthFileExists(): boolean {
     JSON.parse(authData); // Verify it's valid JSON
 
     return true;
-  } catch (error) {
-    console.error(chalk.red("⚠️  Invalid authentication file."));
-    console.error(chalk.red("Please run `yarn auth` to authenticate again."));
+  } catch (err) {
+    error("Invalid authentication file.");
+    error("Please run `yarn auth` to authenticate again.");
     return false;
   }
-}
-
-/**
- * Create readline interface for user interaction
- */
-function createReadlineInterface(): readline.Interface {
-  return readline.createInterface({
-    input: process.stdin,
-    output: process.stdout,
-  });
-}
-
-/**
- * Wait for user confirmation via keyboard input
- */
-function waitForUserConfirmation(prompt: string): Promise<void> {
-  const rl = createReadlineInterface();
-  return new Promise((resolve) => {
-    rl.question(prompt, () => {
-      rl.close();
-      resolve();
-    });
-  });
 }
 
 /**
@@ -87,76 +62,29 @@ async function summarizeDocument(input: string): Promise<void> {
     process.exit(1);
   }
 
-  console.log(chalk.blue("Starting summarization process..."));
+  info("Starting summarization process...");
 
-  // Launch browser with arguments to bypass automation detection
-  const browser = await chromium.launch({
-    headless: false,
-    channel: "chrome", // Use installed Chrome browser
-    args: [
-      "--disable-blink-features=AutomationControlled",
-      "--disable-infobars",
-      "--no-sandbox",
-      "--start-maximized",
-      "--disable-extensions",
-      "--disable-popup-blocking",
-      "--disable-notifications",
-    ],
+  // Initialize browser using the browser service with auth
+  const { browser, context } = await initializeBrowser({
+    useAuth: true,
   });
 
-  // Generate a realistic user agent
-  const ua = new UserAgent({ deviceCategory: "desktop" }).toString();
-  console.log(chalk.gray(`Using user agent: ${ua}`));
-
   try {
-    // Create a new context with the user agent and storage state
-    const context = await browser.newContext({
-      userAgent: ua,
-      viewport: { width: 1920, height: 1080 }, // Define a specific viewport
-      javaScriptEnabled: true,
-      hasTouch: false,
-      isMobile: false,
-      locale: "en-US",
-      storageState: AUTH_FILE_PATH, // Load cookies from the auth file
-    });
-
-    // Add script to override automation flags
-    await context.addInitScript(() => {
-      // Override the properties that detect automation
-      Object.defineProperty(navigator, "webdriver", { get: () => false });
-      Object.defineProperty(navigator, "languages", { get: () => ["en-US", "en"] });
-
-      // Override permission requests
-      const originalQuery = window.navigator.permissions.query;
-      // @ts-ignore
-      window.navigator.permissions.query = (parameters) => {
-        if (parameters.name === "notifications") {
-          return Promise.resolve({ state: "granted" });
-        }
-        return originalQuery(parameters);
-      };
-
-      // Empty plugins array
-      // @ts-ignore
-      Object.defineProperty(navigator, "plugins", { get: () => [] });
-    });
-
     // Create a new page
     const page = await context.newPage();
 
     // Navigate to NotebookLM
-    console.log(chalk.blue("Navigating to NotebookLM..."));
+    info("Navigating to NotebookLM...");
     await page.goto(NOTEBOOKLM_URL);
 
-    // Allow time for the page to load and handle any security checks
-    console.log(chalk.yellow("Page is loading. If you see any security warnings, please handle them manually."));
-    await waitForUserConfirmation(chalk.yellow("Press Enter to continue once the page is fully loaded: "));
+    // Allow time for the page to load
+    await page.waitForLoadState("networkidle");
 
     // Check if we're redirected to a login page, indicating invalid session
     const currentUrl = page.url();
     if (LOGIN_URL_PATTERN.test(currentUrl)) {
-      console.error(chalk.red("⚠️  Login session expired or invalid."));
-      console.error(chalk.red("Please run `yarn auth` to authenticate again."));
+      error("Login session expired or invalid.");
+      error("Please run `yarn auth` to authenticate again.");
       await browser.close();
       process.exit(1);
     }
@@ -180,8 +108,8 @@ async function summarizeDocument(input: string): Promise<void> {
 
     // Close the browser
     await browser.close();
-  } catch (error) {
-    console.error(chalk.red("Error during summarization process:"), error);
+  } catch (err) {
+    error(`Error during summarization process: ${err}`);
     await browser.close();
     process.exit(1);
   }
@@ -192,7 +120,7 @@ async function summarizeDocument(input: string): Promise<void> {
  */
 async function handleNotebookSelection(page: Page): Promise<void> {
   try {
-    console.log(chalk.blue("Setting up notebook..."));
+    info("Setting up notebook...");
 
     // Check if we're already in a notebook
     const isInNotebook = await page.evaluate(() => {
@@ -208,12 +136,12 @@ async function handleNotebookSelection(page: Page): Promise<void> {
 
       if (hasExistingNotebooks) {
         // Select the first notebook
-        console.log(chalk.blue("Selecting existing notebook..."));
+        info("Selecting existing notebook...");
         await page.click('[data-testid="notebook-card"]');
         await page.waitForURL(/\/notebook\//, { timeout: 30000 });
       } else {
         // Create a new notebook
-        console.log(chalk.blue("Creating a new notebook..."));
+        info("Creating a new notebook...");
         await page.click('text="Create a new notebook"');
         await page.waitForURL(/\/notebook\//, { timeout: 30000 });
 
@@ -222,10 +150,10 @@ async function handleNotebookSelection(page: Page): Promise<void> {
       }
     }
 
-    console.log(chalk.green("✓ Notebook ready"));
-  } catch (error) {
-    console.error(chalk.red("Error setting up notebook:"), error);
-    throw error;
+    success("Notebook ready");
+  } catch (err) {
+    error(`Error setting up notebook: ${err}`);
+    throw err;
   }
 }
 
@@ -234,7 +162,7 @@ async function handleNotebookSelection(page: Page): Promise<void> {
  */
 async function addSourceToNotebook(page: Page, input: string): Promise<void> {
   try {
-    console.log(chalk.blue("Adding source to notebook..."));
+    info("Adding source to notebook...");
 
     // Check if we need to add a source
     const addSourceButton = await page.getByRole("button", { name: /add source/i });
@@ -248,7 +176,7 @@ async function addSourceToNotebook(page: Page, input: string): Promise<void> {
 
     if (isUrl) {
       // Input is a URL
-      console.log(chalk.blue("Adding URL as source..."));
+      info("Adding URL as source...");
       // Click the URL tab if needed
       await page.getByText("URL").click();
 
@@ -257,7 +185,7 @@ async function addSourceToNotebook(page: Page, input: string): Promise<void> {
       await page.getByText("Add").click();
     } else {
       // Input is text
-      console.log(chalk.blue("Adding text as source..."));
+      info("Adding text as source...");
       // Click the text tab if needed
       await page.getByText("Text").click();
 
@@ -269,10 +197,10 @@ async function addSourceToNotebook(page: Page, input: string): Promise<void> {
     // Wait for source to be added
     await page.waitForSelector('[data-testid="source-chip"]', { timeout: 30000 });
 
-    console.log(chalk.green("✓ Source added"));
-  } catch (error) {
-    console.error(chalk.red("Error adding source:"), error);
-    throw error;
+    success("Source added");
+  } catch (err) {
+    error(`Error adding source: ${err}`);
+    throw err;
   }
 }
 
@@ -281,7 +209,7 @@ async function addSourceToNotebook(page: Page, input: string): Promise<void> {
  */
 async function askQuestionAndGetResponse(page: Page, question: string): Promise<string> {
   try {
-    console.log(chalk.blue(`Asking question: "${question}"...`));
+    info(`Asking question: "${question}"...`);
 
     // Find and click on the question input field
     const questionInput = page.getByPlaceholder("Ask a question about your sources");
@@ -292,7 +220,7 @@ async function askQuestionAndGetResponse(page: Page, question: string): Promise<
     await questionInput.press("Enter");
 
     // Wait for the response to appear
-    console.log(chalk.blue("Waiting for response..."));
+    info("Waiting for response...");
     await page.waitForSelector('[data-testid="chat-message-content"]', { timeout: 60000 });
 
     // Extract the response text
@@ -301,16 +229,16 @@ async function askQuestionAndGetResponse(page: Page, question: string): Promise<
       return responseElement ? responseElement.textContent || "" : "";
     });
 
-    console.log(chalk.green("✓ Response received"));
+    success("Response received");
     return responseText;
-  } catch (error) {
-    console.error(chalk.red("Error getting response:"), error);
-    throw error;
+  } catch (err) {
+    error(`Error getting response: ${err}`);
+    throw err;
   }
 }
 
 // Run the main function
 summarizeDocument(argv.input).catch((err) => {
-  console.error(chalk.red("Failed to summarize document:"), err);
+  error(`Failed to summarize document: ${err}`);
   process.exit(1);
 });
