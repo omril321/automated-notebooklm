@@ -1,10 +1,10 @@
 import { Page } from "playwright";
-import * as fs from "fs";
 import chalk from "chalk";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
-import { initializeBrowser, AUTH_FILE_PATH } from "./browserService";
+import { initializeBrowser } from "./browserService";
 import { error, info, success, warning } from "./logger";
+import { Config, loadConfig } from "./configService";
 
 // Parse command line arguments
 const argv = yargs(hideBin(process.argv))
@@ -19,7 +19,6 @@ const argv = yargs(hideBin(process.argv))
 
 // Constants
 const NOTEBOOKLM_URL = "https://notebooklm.google.com";
-const LOGIN_URL_PATTERN = /accounts\.google\.com/;
 
 /**
  * Placeholder function for future audio generation capability
@@ -31,86 +30,59 @@ function generateAudio(summary: string): void {
 }
 
 /**
- * Check if the authentication file exists and is valid
- */
-function checkAuthFileExists(): boolean {
-  try {
-    if (!fs.existsSync(AUTH_FILE_PATH)) {
-      error("Authentication file not found.");
-      error("Please run `yarn auth` to authenticate first.");
-      return false;
-    }
-
-    // Additional validation could be added here
-    const authData = fs.readFileSync(AUTH_FILE_PATH, "utf8");
-    JSON.parse(authData); // Verify it's valid JSON
-
-    return true;
-  } catch (err) {
-    error("Invalid authentication file.");
-    error("Please run `yarn auth` to authenticate again.");
-    return false;
-  }
-}
-
-/**
  * Main function to automate the summarization process
  */
 async function summarizeDocument(input: string): Promise<void> {
-  // Check if auth file exists and is valid
-  if (!checkAuthFileExists()) {
-    process.exit(1);
-  }
-
-  info("Starting summarization process...");
-
-  // Initialize browser using the browser service with auth
-  const { browser, context } = await initializeBrowser({
-    useAuth: true,
-  });
-
   try {
+    info("Starting summarization process...");
+
+    // Load configuration
+    const config = loadConfig();
+
+    // Initialize browser
+    const { browser, context } = await initializeBrowser({
+      headless: false,
+    });
+
     // Create a new page
     const page = await context.newPage();
 
-    // Navigate to NotebookLM
-    info("Navigating to NotebookLM...");
-    await page.goto(NOTEBOOKLM_URL);
+    try {
+      // Login to Google account
+      await loginToGoogle(page, config);
 
-    // Allow time for the page to load
-    await page.waitForLoadState("networkidle");
+      // Navigate to NotebookLM if not already there
+      const currentUrl = page.url();
+      if (!currentUrl.includes("notebooklm.google.com")) {
+        info("Navigating to NotebookLM...");
+        await page.goto(NOTEBOOKLM_URL);
+      }
 
-    // Check if we're redirected to a login page, indicating invalid session
-    const currentUrl = page.url();
-    if (LOGIN_URL_PATTERN.test(currentUrl)) {
-      error("Login session expired or invalid.");
-      error("Please run `yarn auth` to authenticate again.");
+      // Allow time for the page to load
+      await page.waitForLoadState("networkidle");
+
+      // Create new notebook or use existing one
+      await handleNotebookSelection(page);
+
+      // Add input as a source
+      await addSourceToNotebook(page, input);
+
+      // Ask for summary
+      const summary = await askQuestionAndGetResponse(page, "Summarize this document");
+
+      // Output the summary
+      console.log(chalk.green("\n=== SUMMARY ===\n"));
+      console.log(summary);
+      console.log(chalk.green("\n===============\n"));
+
+      // Call the placeholder function for audio generation
+      generateAudio(summary);
+    } finally {
+      // Close the browser
       await browser.close();
-      process.exit(1);
     }
-
-    // Create new notebook or use existing one
-    await handleNotebookSelection(page);
-
-    // Add input as a source
-    await addSourceToNotebook(page, input);
-
-    // Ask for summary
-    const summary = await askQuestionAndGetResponse(page, "Summarize this document");
-
-    // Output the summary
-    console.log(chalk.green("\n=== SUMMARY ===\n"));
-    console.log(summary);
-    console.log(chalk.green("\n===============\n"));
-
-    // Call the placeholder function for audio generation
-    generateAudio(summary);
-
-    // Close the browser
-    await browser.close();
   } catch (err) {
     error(`Error during summarization process: ${err}`);
-    await browser.close();
     process.exit(1);
   }
 }
@@ -242,3 +214,51 @@ summarizeDocument(argv.input).catch((err) => {
   error(`Failed to summarize document: ${err}`);
   process.exit(1);
 });
+
+/**
+ * Login to Google account using provided credentials
+ */
+export async function loginToGoogle(page: Page, config: Config): Promise<void> {
+  try {
+    info("Logging in to Google account...");
+
+    // Navigate to NotebookLM
+    await page.goto("https://notebooklm.google.com");
+
+    // Wait for Google login page to load
+    await page.waitForSelector('input[type="email"]', { timeout: 30000 });
+
+    // Enter email
+    info("Entering email...");
+    await page.fill('input[type="email"]', config.googleEmail);
+    await page.click("#identifierNext");
+
+    // Wait for password field to appear
+    await page.waitForSelector('input[type="password"]', { timeout: 30000 });
+
+    // Enter password
+    info("Entering password...");
+    await page.fill('input[type="password"]', config.googlePassword);
+    await page.click("#passwordNext");
+
+    // Wait for login to complete - check for NotebookLM UI or potential 2FA
+    const has2FA = await Promise.race([
+      page.waitForSelector('[data-testid="app-notebooks"]', { timeout: 30000 }).then(() => false),
+      page
+        .waitForSelector('input[type="tel"]', { timeout: 30000 })
+        .then(() => true)
+        .catch(() => false),
+    ]);
+
+    if (has2FA) {
+      error("Two-factor authentication detected. This script doesn't support 2FA.");
+      error("Please try using an account without 2FA.");
+      throw new Error("Two-factor authentication required");
+    }
+
+    success("Successfully logged in to Google account");
+  } catch (err) {
+    error(`Login failed: ${err}`);
+    throw new Error(`Failed to login: ${err}`);
+  }
+}

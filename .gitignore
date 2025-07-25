@@ -4,3 +4,7 @@ dist/
 *.log
  
 auth.json
+.env
+.env.*
+# Ignore all .env files, but not .env.example
+!.env.example

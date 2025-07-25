@@ -4,7 +4,6 @@
   "description": "Automate Google NotebookLM for document summarization using Playwright",
   "main": "summarize.ts",
   "scripts": {
-    "auth": "ts-node src/login.ts",
     "summarize": "ts-node src/summarize.ts"
   },
   "keywords": [
@@ -21,6 +20,7 @@
   "license": "ISC",
   "dependencies": {
     "chalk": "^4.1.2",
+    "dotenv": "^17.2.1",
     "playwright": "^1.39.0",
     "ts-node": "^10.9.1",
     "typescript": "^5.2.2",
@@ -28,6 +28,7 @@
     "yargs": "^17.7.2"
   },
   "devDependencies": {
+    "@types/dotenv": "^8.2.3",
     "@types/node": "^20.8.3",
     "@types/user-agents": "^1.0.4",
     "@types/yargs": "^17.0.25"

@@ -1,19 +1,14 @@
-import { Browser, BrowserContext, chromium, LaunchOptions, BrowserContextOptions } from "playwright";
+import { Browser, BrowserContext, chromium, LaunchOptions, BrowserContextOptions, Page } from "playwright";
 import UserAgent from "user-agents";
-import * as path from "path";
-import * as fs from "fs";
-import { info, warning } from "./logger";
+import { info, error, success } from "./logger";
+import { Config } from "./configService";
 
 /**
  * Browser Service - Browser initialization service for NotebookLM automation
  */
 export interface BrowserOptions {
   headless?: boolean;
-  useAuth?: boolean;
 }
-
-// Default configuration
-export const AUTH_FILE_PATH = path.join(__dirname, "auth.json");
 
 /**
  * Initialize and launch a browser with anti-detection settings
@@ -22,7 +17,7 @@ export async function initializeBrowser(options: BrowserOptions = {}): Promise<{
   browser: Browser;
   context: BrowserContext;
 }> {
-  const { headless = false, useAuth = false } = options;
+  const { headless = false } = options;
 
   info("Initializing browser...");
 
@@ -58,21 +53,8 @@ export async function initializeBrowser(options: BrowserOptions = {}): Promise<{
     locale: "en-US",
   };
 
-  // Add storage state if auth is required and file exists
-  if (useAuth) {
-    if (fs.existsSync(AUTH_FILE_PATH)) {
-      info(`Using authentication from ${AUTH_FILE_PATH}`);
-      contextOptions.storageState = AUTH_FILE_PATH;
-    } else {
-      warning(`Authentication file not found at ${AUTH_FILE_PATH}. Please run 'yarn auth' to authenticate.`);
-      process.exit(1);
-    }
-  }
-
-  // Create a new context with the user agent and a defined viewport
   const context = await browser.newContext(contextOptions);
 
-  // Add script to override automation flags
   await addAntiDetectionScripts(context);
 
   return { browser, context };
