@@ -1,6 +1,6 @@
 # σ₃: Technical Context
 
-_v1.0 | Created: 24-07-2025 | Updated: 25-07-2025_
+_v1.0 | Created: 24-07-2025 | Updated: 26-07-2025_
 _Π: INITIALIZING | Ω: RESEARCH_
 
 ## 🛠️ Technology Stack
@@ -24,9 +24,12 @@ _Π: INITIALIZING | Ω: RESEARCH_
   - Handles user input/output operations
 - **logger** - Console logging service
   - Provides different log types
-- **summarize** - Document summarization module
-  - Uses direct Google authentication
-  - Handles source addition and processing
+- **notebookLMService** - Google NotebookLM API service
+  - Handles all interactions with NotebookLM
+  - Manages authentication and resource manipulation
+- **podcastGeneration** - Podcast generation module
+  - Orchestrates the process of generating podcasts from URLs
+  - Uses notebookLMService to interact with NotebookLM
 
 ## 🔌 Dependencies
 

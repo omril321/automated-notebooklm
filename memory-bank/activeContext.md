@@ -1,37 +1,38 @@
 # σ₄: Active Context
 
-_v1.0 | Created: 24-07-2025 | Updated: 25-07-2025_
+_v1.0 | Created: 24-07-2025 | Updated: 26-07-2025_
 _Π: INITIALIZING | Ω: RESEARCH_
 
 ## 🔮 Current Focus
 
-Direct Google authentication with environment variables
+Podcast generation functionality and code modularization
 
 ## 🔍 Current Tasks
 
-- Implement direct Google authentication
-- Create environment configuration service
-- Remove auth file dependency
-- Update summarize.ts for new authentication flow
-- Implement URL to podcast conversion workflow
+- Refactor podcast generation into dedicated module
+- Create script for podcast generation from URLs
+- Implement NotebookLM service for API interactions
+- Improve code structure and maintainability
+- Test podcast generation workflow
 
 ## 📎 Context References
 
-- 📄 Active Files: [summarize.ts, browserService.ts, configService.ts]
-- 💻 Active Code: [browser initialization, authentication]
+- 📄 Active Files: [podcastGeneration.ts, notebookLMService.ts, scripts/generatePodcastForUrl.ts]
+- 💻 Active Code: [podcast generation, NotebookLM service]
 - 📚 Active Docs: [README.md]
-- 📁 Active Folders: [src, memory-bank]
+- 📁 Active Folders: [src, src/scripts, memory-bank]
 - 📏 Active Rules: [typescript-guidelines]
 
 ## 📡 Context Status
 
-- 🟢 Active: [summarize.ts, browserService.ts, configService.ts]
+- 🟢 Active: [podcastGeneration.ts, notebookLMService.ts, browserService.ts, configService.ts]
 - 🟣 Essential: [memory-bank, src, dotenv]
-- 🔴 Deprecated: [login.ts, AUTH_FILE_PATH]
+- 🔴 Deprecated: [summarize.ts, login.ts, AUTH_FILE_PATH]
 
 ## 📝 Planned Changes
 
-- Create configService.ts for environment variables
-- Implement direct Google authentication
-- Remove login.ts dependency
-- Update summarize.ts authentication flow
+- Refine podcast generation workflow
+- Add error handling for edge cases
+- Implement monday.com integration
+- Add automated testing for key components
+- Improve user experience with better CLI feedback
