@@ -1,7 +1,8 @@
 import { Browser, BrowserContext, chromium, LaunchOptions, BrowserContextOptions, Page } from "playwright";
 import UserAgent from "user-agents";
-import { info, error, success } from "./logger";
-import { Config } from "./configService";
+import { info } from "./logger";
+import * as path from "path";
+import { getProjectRoot } from "./utils";
 
 /**
  * Browser Service - Browser initialization service for NotebookLM automation
@@ -25,6 +26,8 @@ export async function initializeBrowser(options: BrowserOptions = {}): Promise<{
   const launchOptions: LaunchOptions = {
     headless,
     channel: "chrome", // Use installed Chrome browser
+    slowMo: 80,
+    downloadsPath: path.join(getProjectRoot(), "downloads"),
     args: [
       "--disable-blink-features=AutomationControlled",
       "--disable-infobars",
@@ -46,7 +49,6 @@ export async function initializeBrowser(options: BrowserOptions = {}): Promise<{
   // Create context options
   const contextOptions: BrowserContextOptions = {
     userAgent: ua,
-    viewport: { width: 1920, height: 1080 },
     javaScriptEnabled: true,
     hasTouch: false,
     isMobile: false,
