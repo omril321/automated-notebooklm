@@ -6,6 +6,8 @@ dotenv.config();
 export interface Config {
   googleEmail: string;
   googlePassword: string;
+  redCircleUsername?: string;
+  redCirclePassword?: string;
 }
 
 /**
@@ -17,6 +19,10 @@ export function loadConfig(): Config {
   // Validate required environment variables
   const googleEmail = process.env.GOOGLE_USER_EMAIL;
   const googlePassword = process.env.GOOGLE_USER_PASSWORD;
+
+  // Optional RedCircle credentials (for upload functionality)
+  const redCircleUsername = process.env.REDCIRCLE_USERNAME;
+  const redCirclePassword = process.env.REDCIRCLE_PASSWORD;
 
   // Check for missing required variables
   const missingVars = [];
@@ -32,5 +38,7 @@ export function loadConfig(): Config {
   return {
     googleEmail: googleEmail!,
     googlePassword: googlePassword!,
+    redCircleUsername,
+    redCirclePassword,
   };
 }

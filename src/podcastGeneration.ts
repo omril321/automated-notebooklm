@@ -1,32 +1,45 @@
 import { Download } from "playwright";
 import { NotebookLMService } from "./notebookLMService";
 import { initializeBrowser } from "./browserService";
-import { error, info } from "./logger";
+import { info, success } from "./logger";
 
-export async function generatePodcastFromUrl(url: string): Promise<Download[]> {
+export type PodcastResult = {
+  wavDownload?: Download;
+};
+
+/**
+ * Generate podcast WAV file from URL using NotebookLM
+ * @param url Source URL to generate podcast from
+ * @returns Promise with podcast generation results
+ */
+export async function generatePodcastFromUrl(url: string): Promise<PodcastResult> {
+  info("Starting podcast generation from NotebookLM...");
+
+  const { browser, service } = await initialize();
+
   try {
-    info("Starting podcast generation process...");
+    info("Logging into Google account...");
+    await service.loginToGoogle();
 
-    // Initialize browser
-    const { browser, service } = await initialize();
+    info("Creating notebook and adding URL resource...");
+    await service.createNewNotebook();
+    await service.selectUrlResource();
+    await service.addUrlResource(url);
+    await service.submitUrlResources();
+    await service.setLanguage();
 
-    try {
-      await service.loginToGoogle();
-      await service.createNewNotebook();
-      await service.selectUrlResource();
-      await service.addUrlResource(url);
-      await service.submitUrlResources();
-      await service.setLanguage();
-      await service.generateStudioPodcast();
-      const download = await service.downloadStudioPodcast();
+    info("Generating studio podcast...");
+    await service.generateStudioPodcast();
 
-      return [download];
-    } finally {
-      await browser.close();
-    }
-  } catch (err) {
-    error(`Error during podcast generation process: ${err}`);
-    process.exit(1);
+    info("Downloading generated podcast...");
+    const download = await service.downloadStudioPodcast();
+
+    success("Podcast WAV file generated successfully from NotebookLM");
+
+    return { wavDownload: download };
+  } finally {
+    await browser.close();
+    info("Browser closed successfully");
   }
 }
 

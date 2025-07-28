@@ -1,7 +1,7 @@
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
 import { error } from "../logger";
-import { generatePodcastFromUrl } from "../podcastGeneration";
+import { generateAndUpload } from "../generateAndUpload";
 
 // Parse command line arguments
 const argv = yargs(hideBin(process.argv))
@@ -10,12 +10,19 @@ const argv = yargs(hideBin(process.argv))
     type: "string",
     demandOption: true,
   })
+  .option("no-upload", {
+    description: "Skip uploading the podcast the hosting service",
+    type: "boolean",
+    default: false,
+  })
   .help()
   .alias("help", "h")
   .parseSync();
 
 // Run the main function
-generatePodcastFromUrl(argv.url).catch((err) => {
-  error(`Failed to generate podcast from url: ${err}`);
+generateAndUpload(argv.url, {
+  skipUpload: argv["no-upload"],
+}).catch((err) => {
+  error(`Failed to run podcast generation and upload: ${err}`);
   process.exit(1);
 });

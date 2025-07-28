@@ -1,6 +1,6 @@
 # 🔣 Symbol Reference Guide
 
-_v1.0 | Created: 24-07-2025 | Updated: 24-07-2025_
+_v1.0 | Created: 24-07-2025 | Updated: 28-07-2025_
 
 ## 📁 File Symbols
 
