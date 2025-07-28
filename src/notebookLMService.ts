@@ -119,7 +119,7 @@ export class NotebookLMService {
     success("URL resources submitted successfully");
   }
 
-  async setLanguage(language: "עברית" | "English" = "עברית"): Promise<void> {
+  async setLanguage(language: "עברית" | "English" = "English"): Promise<void> {
     info(`Setting output language to ${language}...`);
 
     const settingsButton = this.page.getByText("Settings", { exact: true });
