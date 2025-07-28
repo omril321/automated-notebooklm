@@ -7,7 +7,7 @@ import { loadConfig } from "./configService";
  */
 export class NotebookLMService {
   private page: Page;
-  private readonly baseUrl = "https://notebooklm.google";
+  private readonly baseUrl = "https://notebooklm.google.com";
 
   /**
    * Creates a new NotebookLMService instance
