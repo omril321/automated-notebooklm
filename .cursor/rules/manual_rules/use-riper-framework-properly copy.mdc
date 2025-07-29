@@ -1,0 +1,14 @@
+---
+description: Ask the agent to check the memory bank files for the current phase and update them as needed.
+globs:
+alwaysApply: false
+---
+
+Check the RIPER Sigma framework carefully. Details are at @riper/ripersigma105.mdc .
+
+Also consider the following rules:
+
+- @cursor-riper-date-conciseness-standards.mdc
+
+Check the memory bank files for the current phase and see where we stand. Check the current progress by reading previous messages and the current changes of the files. If we lost track of the progress, or anything is missing, ask the user for missing details.
+Once you have the full picture, reflect the situation to the user. Mention where we stand (what's the current mission in high level) and which mode we're at. If there are changes needed to be done to the memory bank files, ask the user for permission to do so.

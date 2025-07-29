@@ -4,6 +4,9 @@ dist/
 *.log
 
 downloads/
+temp/
+coverage/
+temp-output/
 
 auth.json
 .env

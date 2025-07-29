@@ -6,7 +6,6 @@ import { info, success, error } from "./logger";
 
 type ConversionOptions = {
   outputPath: string;
-  title?: string;
   bitrate?: string;
   quality?: number;
   sampleRate?: number;
@@ -86,14 +85,13 @@ async function convertWavToMp3(inputPath: string, options: ConversionOptions): P
 
   const {
     outputPath,
-    title,
     bitrate = DEFAULT_BITRATE,
     quality = DEFAULT_QUALITY,
     sampleRate = DEFAULT_SAMPLE_RATE,
   } = options;
 
   return new Promise((resolve, reject) => {
-    const command = createFfmpegCommand(inputPath, { bitrate, quality, sampleRate, title });
+    const command = createFfmpegCommand(inputPath, { bitrate, quality, sampleRate });
 
     command
       .on("start", (commandLine: string) => {
@@ -131,7 +129,7 @@ async function convertWavToMp3(inputPath: string, options: ConversionOptions): P
  */
 function createFfmpegCommand(
   inputPath: string,
-  options: { bitrate: string; quality: number; sampleRate: number; title?: string }
+  options: { bitrate: string; quality: number; sampleRate: number }
 ): FfmpegCommand {
   const command = ffmpeg(inputPath)
     .audioCodec("libmp3lame") // Use LAME encoder for best quality
@@ -140,11 +138,6 @@ function createFfmpegCommand(
     .audioFrequency(options.sampleRate)
     .audioChannels(2) // Preserve stereo
     .format("mp3");
-
-  // Add metadata if title provided
-  if (options.title) {
-    command.addOutputOptions(["-metadata", `title=${options.title}`]);
-  }
 
   return command;
 }

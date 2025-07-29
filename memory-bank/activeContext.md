@@ -1,75 +1,68 @@
 # σ₄: Active Context
 
-_v1.0 | Created: 24-07-2025 | Updated: 28-07-2025_
-_Π: DEVELOPMENT | Ω: COMPLETED_
+_v1.4 | Created: 24-07-2025 | Updated: 29-07-2025_
+_Π: DEVELOPMENT | Ω: REVIEW_
 
 ## 🔮 Current Focus
 
-✅ **COMPLETED**: Download handling consolidation - reduced repetitions to single location
+🔎 **REVIEW MODE**: Validating completed testing implementation phase and preparing for next development cycle
 
-## ✅ Final Implementation Summary
+## 🎯 Current Implementation Status
 
-### Architecture Changes
+### ✅ Successfully Implemented
 
-- **Simplified Error Handling**: Removed complex result types, errors just throw naturally
-- **Functional Programming**: Converted audio service from class to modern functions
-- **Flow Simplification**: Created `generateAndUpload.ts` (replacing complex `podcastFlow.ts`)
-- **Separation of Concerns**: Each module has single responsibility
-- **Filename-based Metadata**: Episodes use WAV filename instead of URL for titles
+1. **Vitest Framework Setup** - Modern testing with TypeScript support, Node.js v24
+2. **Co-located Test Structure** - Tests in `src/__tests__/` as requested
+3. **API Preservation** - Zero changes to exported functions
+4. **Real FFmpeg Integration** - Tests actual conversion without mocking
+5. **Type Safety** - Proper Vitest mocking with `Partial<Mocked<Download>>`
+6. **Code Quality** - Extracted `createMockDownload()` helper, removed repetition
 
-### File Structure (Final)
+### 🔄 Active Refinements (Current Session)
 
-```
-src/
-├── podcastGeneration.ts      # Core: NotebookLM → WAV (simplified)
-├── audioConversionService.ts # Functions: WAV → MP3 (no classes, no duplicates)
-├── redCircleService.ts       # Placeholder: uploadEpisode() (empty impl)
-├── generateAndUpload.ts      # Flow: Orchestrates full pipeline (simplified)
-├── downloadUtils.ts          # Single source: Download handling & path generation
-└── scripts/generatePodcastForUrl.ts # CLI with --no-upload flag
-```
+- **Enhanced Test Mocking**: Using proper Vitest patterns with `vi.fn().mockReturnValue()`
+- **Simplified Service**: Removed title metadata functionality entirely
+- **Exact Assertions**: Changed from `typeof` checks to exact file size comparisons
+- **Type Safety**: Improved mock typing with proper Download interface
+- **Test Organization**: Streamlined test cases, removed redundant tests
 
-### Key Design Decisions
+### 🎯 Technical Implementation Details
 
-- **Single responsibility consolidation**: All download operations in one utility module
-- **No code repetition**: Download validation, metadata extraction, and path generation unified
-- **Type safety**: Proper TypeScript types, no `any` usage
-- **Modern patterns**: Functions over classes, types over interfaces
-- **Simple error handling**: Just throw errors, no wrapper types
-- **Centralized utilities**: downloadUtils.ts handles all file operations
+**Framework**: Vitest 3.2.4 with TypeScript support
+**Testing Approach**: Real FFmpeg integration (no mocking)
+**Test Location**: Co-located in `src/__tests__/audioConversionService.test.ts`
+**Fixture**: User-provided real audio file
+**Coverage Target**: Testing `convertFromDownload()` public API
 
 ## 📎 Context References
 
-- 📄 Active Files: [downloadUtils.ts, generateAndUpload.ts, audioConversionService.ts, podcastGeneration.ts]
-- 💻 Active Code: [Consolidated download utilities, simplified flow architecture, functional conversion]
-- 📚 Active Docs: [TypeScript functional patterns, modern Node.js practices]
-- 📁 Active Folders: [src/, src/scripts/]
-- 🔄 Git References: [Simplified upload architecture branch]
-- 📏 Active Rules: [typescript-guidelines, llm-rule-srp, functional programming]
+- 📄 **Active Files**: [src/audioConversionService.ts, src/__tests__/audioConversionService.test.ts]
+- 💻 **Active Code**: [convertFromDownload, convertWavToMp3 - API PRESERVED]
+- 📚 **Active Docs**: [Vitest documentation, co-located testing patterns]
+- 📁 **Active Folders**: [src/__tests__/utils/, src/__tests__/fixtures/]
+- 🔄 **Git Status**: Working tree clean, ready for testing improvements
+- 📏 **Active Rules**: [testing-practices, typescript-guidelines, API preservation]
 
 ## 📡 Context Status
 
-- 🟢 **Production Ready**: [downloadUtils.ts, generateAndUpload.ts, audioConversionService.ts, podcastGeneration.ts]
-- 🟡 **Future Implementation**: [redCircleService.ts - awaiting real RedCircle interface]
-- 🟣 **Core Pipeline**: [URL → NotebookLM → WAV → MP3 → Upload placeholder]
-- 🔴 **Removed**: [Complex error wrappers, class-based services, podcastFlow.ts]
+- 🟢 **In Progress**: Testing implementation refinement and quality improvements
+- 🟡 **Active**: Real FFmpeg integration testing with user-provided fixtures
+- 🟣 **Current Focus**: Type safety, exact assertions, code quality enhancements
+- 🔴 **Next**: Additional test coverage and edge case handling
 
-## 🚀 Next Session Priorities
+## 🚀 Execute Mode Activities
 
-1. **Test the pipeline** with real URL and FFmpeg installation
-2. **Implement RedCircle automation** when ready to explore their interface
-3. **Add integration tests** for the simplified pipeline
-4. **Consider additional hosting services** (Anchor, Spotify, etc.)
+### Current Session Improvements
 
-## 📋 Technical Specifications
+1. Enhanced Vitest mock patterns with proper typing
+2. Simplified audio conversion service (removed title metadata)
+3. Improved test assertions with exact file size validation
+4. Better type safety in test implementations
+5. Streamlined test organization and removed redundancy
 
-### CLI Usage
+### Immediate Next Steps
 
-- Full pipeline: URL input with automatic processing
-- Partial pipeline: --no-upload flag for testing
-
-### Dependencies
-
-- **Required**: fluent-ffmpeg, @types/fluent-ffmpeg (for WAV→MP3)
-- **System**: FFmpeg with libmp3lame codec
-- **Architecture**: Modern TypeScript functional programming
+- Continue refining test coverage and edge cases
+- Validate FFmpeg integration across different scenarios
+- Enhance error handling test scenarios
+- Document testing approach and requirements

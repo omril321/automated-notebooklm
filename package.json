@@ -4,7 +4,12 @@
   "description": "Automate Google NotebookLM for document summarization using Playwright",
   "main": "summarize.ts",
   "scripts": {
-    "generate-podcast-for-url": "ts-node src/scripts/generatePodcastForUrl.ts"
+    "generate-podcast-for-url": "ts-node src/scripts/generatePodcastForUrl.ts",
+    "test": "vitest",
+    "test:run": "vitest run",
+    "test:watch": "vitest --watch",
+    "test:ui": "vitest --ui",
+    "test:coverage": "vitest run --coverage"
   },
   "keywords": [
     "playwright",
@@ -33,6 +38,9 @@
     "@types/dotenv": "^8.2.3",
     "@types/node": "^20.8.3",
     "@types/user-agents": "^1.0.4",
-    "@types/yargs": "^17.0.25"
+    "@types/yargs": "^17.0.25",
+    "@vitest/coverage-v8": "^3.2.4",
+    "@vitest/ui": "^3.2.4",
+    "vitest": "^3.2.4"
   }
 }
