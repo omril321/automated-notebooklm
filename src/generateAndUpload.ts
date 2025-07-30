@@ -40,7 +40,6 @@ export async function generateAndUpload(url: string, options: GenerateAndUploadO
 
   const conversionResult = await convertFromDownload(podcastResult.wavDownload, {
     outputPath: downloadMetadata.outputPath,
-    title: downloadMetadata.title,
   });
 
   success(`MP3 conversion completed: ${conversionResult.outputPath}`);
