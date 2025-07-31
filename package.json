@@ -5,6 +5,7 @@
   "main": "summarize.ts",
   "scripts": {
     "generate-podcast-for-url": "ts-node src/scripts/generatePodcastForUrl.ts",
+    "build": "tsc",
     "test": "vitest",
     "test:run": "vitest run",
     "test:watch": "vitest --watch",

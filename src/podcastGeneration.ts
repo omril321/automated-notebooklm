@@ -4,7 +4,7 @@ import { initializeBrowser } from "./browserService";
 import { info, success } from "./logger";
 
 export type PodcastResult = {
-  wavDownload?: Download;
+  wavPath?: string;
 };
 
 /**
@@ -32,11 +32,10 @@ export async function generatePodcastFromUrl(url: string): Promise<PodcastResult
     await service.generateStudioPodcast();
 
     info("Downloading generated podcast...");
-    const download = await service.downloadStudioPodcast();
+    const wavPath = await service.downloadStudioPodcast();
 
     success("Podcast WAV file generated successfully from NotebookLM");
-
-    return { wavDownload: download };
+    return { wavPath };
   } finally {
     await browser.close();
     info("Browser closed successfully");

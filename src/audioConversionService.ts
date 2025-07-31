@@ -33,20 +33,14 @@ const DEFAULT_SAMPLE_RATE = 44100; // CD quality
 
 /**
  * Convert a WAV file from Playwright download to high-quality MP3
- * @param download Playwright Download object containing WAV data
+ * @param wavPath Path to WAV file to convert
  * @param options Conversion options including output path and quality settings
  * @returns Promise with conversion results
  */
-export async function convertFromDownload(download: Download, options: ConversionOptions): Promise<ConversionResult> {
+export async function convertFromWavFile(wavPath: string, options: ConversionOptions): Promise<ConversionResult> {
   await validateFfmpegInstallation();
 
-  const tempWavPath = await saveToTempFile(download);
-
-  try {
-    return await convertWavToMp3(tempWavPath, options);
-  } finally {
-    await cleanupTempFile(tempWavPath);
-  }
+  return await convertWavToMp3(wavPath, options);
 }
 
 /**

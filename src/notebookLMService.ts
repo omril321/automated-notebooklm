@@ -1,6 +1,7 @@
 import { Download, Page } from "playwright";
 import { info, success } from "./logger";
 import { loadConfig } from "./configService";
+import { saveToTempFile } from "./downloadUtils";
 
 /**
  * Service for automating interactions with Google NotebookLM
@@ -41,7 +42,11 @@ export class NotebookLMService {
     success("Successfully logged in to Google account");
   }
 
-  async downloadStudioPodcast(): Promise<Download> {
+  /**
+   * Download the Studio Podcast
+   * @returns Promise with the path to the downloaded file
+   */
+  async downloadStudioPodcast(): Promise<string> {
     info("Downloading Studio Podcast...");
     info("Waiting for download button to become available (may take several minutes)...");
 
@@ -78,7 +83,7 @@ export class NotebookLMService {
       throw new Error("Something unexpected happened while downloading the Studio Podcast");
     }
 
-    return download;
+    return await saveToTempFile(download);
   }
 
   async createNewNotebook(): Promise<void> {

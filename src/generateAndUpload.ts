@@ -1,5 +1,5 @@
 import { generatePodcastFromUrl } from "./podcastGeneration";
-import { convertFromDownload } from "./audioConversionService";
+import { convertFromWavFile } from "./audioConversionService";
 import { uploadEpisode, EpisodeMetadata } from "./redCircleService";
 import { processDownload } from "./downloadUtils";
 import { info, success } from "./logger";
@@ -26,7 +26,7 @@ export async function generateAndUpload(url: string, options: GenerateAndUploadO
   info("Step 1: Generating podcast...");
   const podcastResult = await generatePodcastFromUrl(url);
 
-  if (!podcastResult.wavDownload) {
+  if (!podcastResult.wavPath) {
     throw new Error("Podcast generation failed - no download available");
   }
 
@@ -36,10 +36,10 @@ export async function generateAndUpload(url: string, options: GenerateAndUploadO
   }
 
   info("Step 2: Processing download and converting to MP3...");
-  const downloadMetadata = await processDownload(podcastResult.wavDownload);
+  const downloadMetadata = await processDownload(podcastResult.wavPath);
 
-  const conversionResult = await convertFromDownload(podcastResult.wavDownload, {
-    outputPath: downloadMetadata.outputPath,
+  const conversionResult = await convertFromWavFile(downloadMetadata.wavPath, {
+    outputPath: downloadMetadata.mp3Path,
   });
 
   success(`MP3 conversion completed: ${conversionResult.outputPath}`);

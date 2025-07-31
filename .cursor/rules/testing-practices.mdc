@@ -31,6 +31,14 @@ description: Testing best practices for file location and implementation details
 - If you need to test internal details, consider if they should be exposed or if the module design needs refactoring
 - Test behavior and outcomes, not implementation steps
 
+## Running the tests
+
+When running the tests for a single time without watching for changes, use the following command:
+
+```bash
+yarn test:run
+```
+
 ## Example Structure
 
 ```

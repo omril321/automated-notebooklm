@@ -6,8 +6,8 @@ import { info } from "./logger";
 export type DownloadMetadata = {
   title: string;
   description: string;
-  filename: string;
-  outputPath: string;
+  wavPath: string;
+  mp3Path: string;
 };
 
 /**
@@ -16,19 +16,11 @@ export type DownloadMetadata = {
  * @param outputDir Output directory for final files
  * @returns Complete metadata and path information
  */
-export async function processDownload(
-  download: Download,
-  outputDir: string = "./downloads"
-): Promise<DownloadMetadata> {
-  await verifyWavDownload(download);
+export async function processDownload(wavPath: string, outputDir: string = "./downloads"): Promise<DownloadMetadata> {
+  await verifyWavDownload(wavPath);
 
-  const filename = download.suggestedFilename();
-  if (!filename) {
-    throw new Error("Download has no suggested filename");
-  }
-
-  const { title, description } = generateEpisodeMetadata(filename);
-  const outputPath = generateOutputPath(title, outputDir);
+  const { title, description } = generateEpisodeMetadata(wavPath);
+  const mp3Path = generateOutputPath(title, outputDir);
 
   // Ensure output directory exists
   await fs.mkdir(outputDir, { recursive: true });
@@ -36,8 +28,8 @@ export async function processDownload(
   return {
     title,
     description,
-    filename,
-    outputPath,
+    wavPath,
+    mp3Path,
   };
 }
 
@@ -79,21 +71,14 @@ export async function cleanupTempFile(filePath: string): Promise<void> {
  * Verify that the download appears to be a WAV file
  * @param download Playwright Download object
  */
-async function verifyWavDownload(download: Download): Promise<void> {
-  const suggestedFilename = download.suggestedFilename();
-
-  if (!suggestedFilename) {
-    throw new Error("Download has no suggested filename. Cannot verify file format.");
-  }
-
-  if (!suggestedFilename.toLowerCase().endsWith(".wav")) {
+async function verifyWavDownload(wavPath: string): Promise<void> {
+  if (!wavPath.toLowerCase().endsWith(".wav")) {
     throw new Error(
-      `Expected WAV file but download suggests: ${suggestedFilename}. ` +
-        "This service only supports WAV to MP3 conversion."
+      `Expected WAV file but download suggests: ${wavPath}. ` + "This service only supports WAV to MP3 conversion."
     );
   }
 
-  info(`Verified download as WAV file named: ${suggestedFilename}`);
+  info(`Verified download as WAV file named: ${wavPath}`);
 }
 
 /**
