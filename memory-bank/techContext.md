@@ -1,6 +1,6 @@
 # σ₃: Technical Context
 
-_v1.2 | Created: 24-07-2025 | Updated: 29-07-2025_
+_v1.5 | Created: 24-07-2025 | Updated: 2025-07-31_
 _Π: DEVELOPMENT | Ω: EXECUTE_
 
 ## 🛠️ Technology Stack
@@ -12,7 +12,44 @@ _Π: DEVELOPMENT | Ω: EXECUTE_
 - 🎙️ **Upload Target**: RedCircle (placeholder implementation)
 - 🔊 **Audio Processing**: fluent-ffmpeg (functional wrapper)
 - 🔐 **Configuration**: dotenv (.env credentials)
-- 🧪 **Testing Framework**: Vitest 3.2.4 (Node.js v24 - ACTIVE)
+- 🧪 **Testing Framework**: Vitest 3.2.4 (Node.js v24 - COMPLETED ✅)
+
+## 🚀 Upcoming Technology Requirements (Next Development Cycle)
+
+### Phase 1: Red Circle Automation ✅ COMPLETED
+
+- **Browser Automation**: Implemented using existing browserService integration
+- **Authentication Flow**: Complete login workflow with environment variables
+- **File Upload**: MP3 episode upload with title and description metadata
+- **Environment**: RED_CIRCLE_USER, RED_CIRCLE_PASSWORD, PUBLISHED_PODCAST_NAME vars
+- **Modular Architecture**: Refactored into focused, single-responsibility functions
+- **Direct File Upload**: Added new feature to upload existing MP3 files without generation
+- **CLI Enhancement**: Added file upload options with title and description parameters
+- **Error Handling**: Comprehensive error handling with debug screenshots
+
+### Phase 2: Podcast Customization
+
+- **Configuration System**: Runtime customization options
+- **Metadata Enhancement**: Extended episode information handling
+- **Template System**: Configurable prompt management
+
+### Phase 3: LangChain Integration
+
+- **LangChain Core**: Framework for flexible workflow orchestration
+- **LangChain Tools**: Integration with existing services
+- **Chain Architecture**: Modular pipeline design
+
+### Phase 4: Monday.com Integration
+
+- **Monday.com API**: Board and item management
+- **Authentication**: OAuth or API key management
+- **Batch Processing**: Bulk URL handling capabilities
+
+### Phase 5: Content Enhancement
+
+- **Cheerio**: Web scraping for metadata extraction
+- **AI Integration**: Content enhancement service (TBD)
+- **URL Analysis**: Automated content detection and categorization
 
 ## 🧪 Testing Technology Stack (IMPLEMENTED)
 
@@ -52,9 +89,9 @@ _Π: DEVELOPMENT | Ω: EXECUTE_
 URL → generateAndUpload.ts → podcastGeneration.ts → NotebookLM → WAV
                           ↓
 audioConversionService.ts → FFmpeg → MP3 → redCircleService.ts → Upload
-                          ↑
-                    [Vitest Testing Layer - ACTIVE]
-                    Real FFmpeg Integration Tests
+                          ↑                     ↑
+                    [Vitest Testing Layer]      |
+                    Real FFmpeg Integration    MP3 File → uploadExistingFile()
 ```
 
 ### Service Breakdown (Updated)
@@ -166,12 +203,14 @@ audioConversionService.ts → FFmpeg → MP3 → redCircleService.ts → Upload
 
 ## 📋 Current Architecture Summary
 
-**Simple, functional, type-safe podcast generation pipeline with comprehensive testing that:**
+**Simple, functional, type-safe podcast generation and upload pipeline with comprehensive testing that:**
 
 1. Generates podcasts from URLs via NotebookLM
 2. Converts WAV to high-quality MP3 using FFmpeg (TESTED with real integration)
-3. Provides placeholder for upload service implementation
-4. Uses modern TypeScript functional programming patterns
-5. Handles errors transparently without complex wrappers
-6. **Tests real FFmpeg integration without API modifications**
-7. **Maintains co-located test structure for maintainability**
+3. Uploads to RedCircle with browser automation using modular functions
+4. Supports direct MP3 file upload without generation process
+5. Uses modern TypeScript functional programming patterns
+6. Handles errors transparently with debug screenshots
+7. **Tests real FFmpeg integration without API modifications**
+8. **Maintains co-located test structure for maintainability**
+9. **Follows Single Responsibility Principle with focused functions**

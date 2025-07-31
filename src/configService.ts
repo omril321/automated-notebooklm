@@ -6,8 +6,9 @@ dotenv.config();
 export interface Config {
   googleEmail: string;
   googlePassword: string;
-  redCircleUsername?: string;
+  redCircleUser?: string;
   redCirclePassword?: string;
+  publishedPodcastName?: string;
 }
 
 /**
@@ -21,14 +22,17 @@ export function loadConfig(): Config {
   const googlePassword = process.env.GOOGLE_USER_PASSWORD;
 
   // Optional RedCircle credentials (for upload functionality)
-  const redCircleUsername = process.env.REDCIRCLE_USERNAME;
-  const redCirclePassword = process.env.REDCIRCLE_PASSWORD;
+  const redCircleUser = process.env.RED_CIRCLE_USER;
+  const redCirclePassword = process.env.RED_CIRCLE_PASSWORD;
+  const publishedPodcastName = process.env.PUBLISHED_PODCAST_NAME;
 
   // Check for missing required variables
   const missingVars = [];
   if (!googleEmail) missingVars.push("GOOGLE_USER_EMAIL");
   if (!googlePassword) missingVars.push("GOOGLE_USER_PASSWORD");
 
+  // Only check for Google variables at config load time
+  // RedCircle variables are checked separately when uploadEpisode is called
   if (missingVars.length > 0) {
     error(`Missing required environment variables: ${missingVars.join(", ")}`);
     error("Please create a .env file with the required variables.");
@@ -38,7 +42,8 @@ export function loadConfig(): Config {
   return {
     googleEmail: googleEmail!,
     googlePassword: googlePassword!,
-    redCircleUsername,
+    redCircleUser,
     redCirclePassword,
+    publishedPodcastName,
   };
 }

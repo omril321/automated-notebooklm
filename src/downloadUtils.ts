@@ -1,6 +1,6 @@
 import { Download } from "playwright";
 import { promises as fs } from "fs";
-import { join } from "path";
+import { join, basename } from "path";
 import { info } from "./logger";
 
 export type DownloadMetadata = {
@@ -83,11 +83,12 @@ async function verifyWavDownload(wavPath: string): Promise<void> {
 
 /**
  * Generate episode metadata from filename
- * @param filename Original download filename
+ * @param wavPath Original download filename
  * @returns Episode title and description
  */
-function generateEpisodeMetadata(filename: string): { title: string; description: string } {
-  const baseTitle = filename.replace(/\.(wav|mp3)$/i, "");
+function generateEpisodeMetadata(wavPath: string): { title: string; description: string } {
+  const fileName = basename(wavPath);
+  const baseTitle = fileName.replace(/\.(wav|mp3)$/i, "");
 
   // Clean up the filename for title
   const title = baseTitle.replace(/[-_]/g, " ").replace(/\s+/g, " ").trim();

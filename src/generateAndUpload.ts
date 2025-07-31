@@ -3,9 +3,15 @@ import { convertFromWavFile } from "./audioConversionService";
 import { uploadEpisode, EpisodeMetadata } from "./redCircleService";
 import { processDownload } from "./downloadUtils";
 import { info, success } from "./logger";
+import * as path from "path";
 
 export type GenerateAndUploadOptions = {
   skipUpload?: boolean;
+};
+
+export type DirectUploadOptions = {
+  title?: string;
+  description?: string;
 };
 
 export type GenerateAndUploadResult = {
@@ -52,6 +58,32 @@ export async function generateAndUpload(url: string, options: GenerateAndUploadO
     filePath: conversionResult.outputPath,
   };
 
+  await uploadEpisode(episodeMetadata);
+  success("Episode uploaded successfully!");
+}
+
+/**
+ * Upload an existing audio file directly to hosting service
+ * @param filePath Path to the MP3 file to upload
+ * @param options Upload options (title, description)
+ */
+export async function uploadExistingFile(filePath: string, options: DirectUploadOptions = {}) {
+  info(`Starting direct upload for file: ${filePath}`);
+
+  if (!filePath.endsWith(".mp3")) {
+    throw new Error("Only MP3 files are supported for direct upload");
+  }
+
+  // Generate default title from filename if not provided
+  const defaultTitle = path.basename(filePath, ".mp3");
+
+  const episodeMetadata: EpisodeMetadata = {
+    title: options.title || defaultTitle,
+    description: options.description || `Uploaded from file: ${defaultTitle}`,
+    filePath: filePath,
+  };
+
+  info(`Uploading to hosting service with title: ${episodeMetadata.title}`);
   await uploadEpisode(episodeMetadata);
   success("Episode uploaded successfully!");
 }

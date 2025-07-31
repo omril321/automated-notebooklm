@@ -1,4 +1,3 @@
-import { Download } from "playwright";
 import { NotebookLMService } from "./notebookLMService";
 import { initializeBrowser } from "./browserService";
 import { info, success } from "./logger";
