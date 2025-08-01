@@ -10,7 +10,8 @@ import {
   checkFfmpegAvailable,
 } from "./utils/test-helpers";
 
-import { convertFromWavFile } from "../audioConversionService";
+import { convertToMp3 } from "../audioConversionService";
+import { GeneratedPodcast } from "../types";
 import path from "path";
 
 const TEST_FIXTURE_FILE = "real NLM's output_for test.wav";
@@ -26,32 +27,42 @@ describe("audioConversionService", () => {
   beforeEach(async () => await createTestOutputDir());
   afterEach(async () => await cleanupTestOutputDir());
 
-  describe("convertFromWavFile", () => {
+  describe("convertToMp3", () => {
     it("should require a valid WAV file path", async () => {
+      const podcast: GeneratedPodcast = {
+        stage: "generated",
+        title: "Test Podcast",
+        description: "Test Description",
+        sourceUrls: ["https://example.com"],
+        wavPath: "nonexistent.wav",
+      };
+
       const options = {
         outputPath: getTestOutputPath("output.mp3"),
       };
 
-      await expect(convertFromWavFile("nonexistent.wav", options)).rejects.toThrow();
-    });
-
-    it("should require valid conversion options", async () => {
-      const inputPath = getTestFixturePath(TEST_FIXTURE_FILE);
-
-      await expect(convertFromWavFile(inputPath, null as any)).rejects.toThrow();
+      await expect(convertToMp3(podcast, options)).rejects.toThrow();
     });
 
     it("should create single output file", async () => {
       const outputPath = getTestOutputPath(generateTestFilename("title-test", "mp3"));
       const inputPath = getTestFixturePath(TEST_FIXTURE_FILE);
 
+      const podcast: GeneratedPodcast = {
+        stage: "generated",
+        title: "Test Podcast",
+        description: "Test Description",
+        sourceUrls: ["https://example.com"],
+        wavPath: inputPath,
+      };
+
       const options = {
         outputPath,
       };
 
-      const result = await convertFromWavFile(inputPath, options);
+      const result = await convertToMp3(podcast, options);
 
-      expect(result.outputPath).toBe(outputPath);
+      expect(result.mp3Path).toBe(outputPath);
       expect(await validateFileExists(outputPath)).toBe(true);
 
       // Check that only ONE file was created at the expected path
@@ -66,6 +77,14 @@ describe("audioConversionService", () => {
       const outputPath = getTestOutputPath(generateTestFilename("custom-options", "mp3"));
       const inputPath = getTestFixturePath(TEST_FIXTURE_FILE);
 
+      const podcast: GeneratedPodcast = {
+        stage: "generated",
+        title: "Custom Options Test",
+        description: "Test Description",
+        sourceUrls: ["https://example.com"],
+        wavPath: inputPath,
+      };
+
       const options = {
         outputPath,
         bitrate: "256k",
@@ -73,11 +92,11 @@ describe("audioConversionService", () => {
         sampleRate: 22050,
       };
 
-      const result = await convertFromWavFile(inputPath, options);
+      const result = await convertToMp3(podcast, options);
 
-      expect(result.outputPath).toBe(outputPath);
-      expect(result.originalSize).toBe(51037484);
-      expect(result.convertedSize).toBe(11009292);
+      expect(result.mp3Path).toBe(outputPath);
+      expect(result.stage).toBe("converted");
+      expect(result.title).toBe("Custom Options Test");
       expect(await validateFileExists(outputPath)).toBe(true);
     });
   });

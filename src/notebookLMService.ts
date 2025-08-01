@@ -2,6 +2,7 @@ import { Download, Page } from "playwright";
 import { info, success } from "./logger";
 import { loadConfig } from "./configService";
 import { saveToTempFile } from "./downloadUtils";
+import { PodcastIntention, createPodcastIntention } from "./types";
 
 /**
  * Service for automating interactions with Google NotebookLM
@@ -152,5 +153,53 @@ export class NotebookLMService {
     await generateButton.click();
 
     success("Clicked on generate button");
+  }
+
+  /**
+   * Extract podcast title from NotebookLM
+   * @returns Promise with the extracted podcast title
+   */
+  async extractPodcastTitle(): Promise<string> {
+    info("Extracting podcast title from NotebookLM...");
+
+    // Get title from the notebook title element
+    const titleElement = this.page.locator(".notebook-title");
+    await titleElement.waitFor({ state: "visible", timeout: 10000 });
+
+    const title = (await titleElement.textContent()) || "Untitled Podcast";
+    const cleanTitle = title.trim();
+
+    success(`Extracted podcast title: ${cleanTitle}`);
+    return cleanTitle;
+  }
+
+  /**
+   * Extract podcast description from NotebookLM
+   * @returns Promise with the extracted podcast description
+   */
+  async extractPodcastDescription(): Promise<string> {
+    info("Extracting podcast description from NotebookLM...");
+
+    // Get description from the summary content element
+    const descriptionElement = this.page.locator(".summary-content");
+    await descriptionElement.waitFor({ state: "visible", timeout: 10000 });
+
+    const description = (await descriptionElement.textContent()) || "";
+    const cleanDescription = description.trim();
+
+    success("Podcast description extracted successfully");
+    return cleanDescription;
+  }
+
+  /**
+   * Get complete podcast metadata
+   * @returns Promise with podcast metadata
+   */
+  async getPodcastMetadata(sourceUrl: string): Promise<PodcastIntention> {
+    info("Retrieving podcast metadata from NotebookLM...");
+
+    const [title, description] = await Promise.all([this.extractPodcastTitle(), this.extractPodcastDescription()]);
+
+    return createPodcastIntention(sourceUrl, title, description);
   }
 }

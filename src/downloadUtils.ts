@@ -2,36 +2,7 @@ import { Download } from "playwright";
 import { promises as fs } from "fs";
 import { join, basename } from "path";
 import { info } from "./logger";
-
-export type DownloadMetadata = {
-  title: string;
-  description: string;
-  wavPath: string;
-  mp3Path: string;
-};
-
-/**
- * Process a download object and generate all necessary metadata and paths
- * @param download Playwright Download object
- * @param outputDir Output directory for final files
- * @returns Complete metadata and path information
- */
-export async function processDownload(wavPath: string, outputDir: string = "./downloads"): Promise<DownloadMetadata> {
-  await verifyWavDownload(wavPath);
-
-  const { title, description } = generateEpisodeMetadata(wavPath);
-  const mp3Path = generateOutputPath(title, outputDir);
-
-  // Ensure output directory exists
-  await fs.mkdir(outputDir, { recursive: true });
-
-  return {
-    title,
-    description,
-    wavPath,
-    mp3Path,
-  };
-}
+import { PodcastIntention, createPodcastIntention } from "./types";
 
 /**
  * Save download to temporary file for processing
@@ -69,9 +40,8 @@ export async function cleanupTempFile(filePath: string): Promise<void> {
 
 /**
  * Verify that the download appears to be a WAV file
- * @param download Playwright Download object
  */
-async function verifyWavDownload(wavPath: string): Promise<void> {
+export async function verifyWavDownload(wavPath: string): Promise<void> {
   if (!wavPath.toLowerCase().endsWith(".wav")) {
     throw new Error(
       `Expected WAV file but download suggests: ${wavPath}. ` + "This service only supports WAV to MP3 conversion."
@@ -82,11 +52,11 @@ async function verifyWavDownload(wavPath: string): Promise<void> {
 }
 
 /**
- * Generate episode metadata from filename
+ * Generate podcast metadata from filename (fallback when NotebookLM metadata is not available)
  * @param wavPath Original download filename
- * @returns Episode title and description
+ * @returns Basic podcast intention with title and description
  */
-function generateEpisodeMetadata(wavPath: string): { title: string; description: string } {
+export function generateMetadataFromFilename(wavPath: string): PodcastIntention {
   const fileName = basename(wavPath);
   const baseTitle = fileName.replace(/\.(wav|mp3)$/i, "");
 
@@ -99,16 +69,16 @@ This episode was automatically generated using NotebookLM and processed through 
 
 Generated: ${new Date().toISOString()}`;
 
-  return { title, description };
+  return createPodcastIntention("file://" + wavPath, title, description);
 }
 
 /**
- * Generate output filename for MP3 based on title and timestamp
+ * Generate output filename for MP3 based on title
  * @param title Episode title
  * @param outputDir Output directory
  * @returns Full path for output MP3 file
  */
-function generateOutputPath(title: string, outputDir: string): string {
+export function generateOutputPath(title: string, outputDir: string): string {
   // Sanitize title for filename
   const sanitizedTitle = title
     .replace(/[^a-zA-Z0-9\s-_]/g, "") // Remove special characters

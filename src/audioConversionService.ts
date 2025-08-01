@@ -1,18 +1,14 @@
 import ffmpeg, { FfmpegCommand, Codec } from "fluent-ffmpeg";
-import { promises as fs } from "fs";
 import { info, success, error } from "./logger";
+import { GeneratedPodcast, ConvertedPodcast, toConvertedPodcast } from "./types";
+import { generateOutputPath, verifyWavDownload } from "./downloadUtils";
 
 type ConversionOptions = {
-  outputPath: string;
+  outputPath?: string;
   bitrate?: string;
   quality?: number;
   sampleRate?: number;
-};
-
-type ConversionResult = {
-  outputPath: string;
-  originalSize: number;
-  convertedSize: number;
+  outputDir?: string;
 };
 
 type FfmpegCodecData = {
@@ -28,17 +24,28 @@ type FfmpegProgress = {
 const DEFAULT_BITRATE = "320k"; // Highest standard quality
 const DEFAULT_QUALITY = 0; // Highest quality (0-9, lower is better)
 const DEFAULT_SAMPLE_RATE = 44100; // CD quality
+const DEFAULT_OUTPUT_DIR = "./downloads";
 
 /**
- * Convert a WAV file from Playwright download to high-quality MP3
- * @param wavPath Path to WAV file to convert
+ * Convert a WAV file to high-quality MP3
+ * @param podcast Generated podcast metadata containing WAV file path
  * @param options Conversion options including output path and quality settings
- * @returns Promise with conversion results
+ * @returns Promise with converted podcast metadata
  */
-export async function convertFromWavFile(wavPath: string, options: ConversionOptions): Promise<ConversionResult> {
+export async function convertToMp3(
+  podcast: GeneratedPodcast,
+  options: ConversionOptions = {}
+): Promise<ConvertedPodcast> {
   await validateFfmpegInstallation();
 
-  return await convertWavToMp3(wavPath, options);
+  // Determine output path - either from options or generate from title
+  const outputPath = options.outputPath || generateOutputPath(podcast.title, options.outputDir || DEFAULT_OUTPUT_DIR);
+
+  // Convert the file
+  await convertWavToMp3(podcast.wavPath, { ...options, outputPath });
+
+  // Return metadata in converted stage
+  return toConvertedPodcast(podcast, outputPath);
 }
 
 /**
@@ -70,9 +77,9 @@ async function validateFfmpegInstallation(): Promise<boolean> {
  * Convert WAV file to high-quality MP3
  * @param inputPath Path to input WAV file
  * @param options Conversion options
- * @returns Promise with conversion results
+ * @returns Promise resolved when conversion is complete
  */
-async function convertWavToMp3(inputPath: string, options: ConversionOptions): Promise<ConversionResult> {
+async function convertWavToMp3(inputPath: string, options: ConversionOptions): Promise<void> {
   info("Starting WAV to MP3 conversion...");
 
   const {
@@ -81,6 +88,10 @@ async function convertWavToMp3(inputPath: string, options: ConversionOptions): P
     quality = DEFAULT_QUALITY,
     sampleRate = DEFAULT_SAMPLE_RATE,
   } = options;
+
+  if (!outputPath) {
+    throw new Error("Output path is required for conversion");
+  }
 
   return new Promise((resolve, reject) => {
     const command = createFfmpegCommand(inputPath, { bitrate, quality, sampleRate });
@@ -98,14 +109,8 @@ async function convertWavToMp3(inputPath: string, options: ConversionOptions): P
         }
       })
       .on("end", async () => {
-        try {
-          const result = await createConversionResult(inputPath, outputPath);
-          success(`Conversion completed: ${result.originalSize} bytes → ${result.convertedSize} bytes`);
-          resolve(result);
-        } catch (statError: unknown) {
-          const errorMessage = statError instanceof Error ? statError.message : "Unknown error";
-          reject(new Error(`Failed to get file statistics: ${errorMessage}`));
-        }
+        success(`Conversion completed to: ${outputPath}`);
+        resolve();
       })
       .on("error", (err: Error) => {
         error(`Conversion failed: ${err.message}`);
@@ -132,18 +137,4 @@ function createFfmpegCommand(
     .format("mp3");
 
   return command;
-}
-
-/**
- * Create conversion result object
- */
-async function createConversionResult(inputPath: string, outputPath: string): Promise<ConversionResult> {
-  const originalStats = await fs.stat(inputPath);
-  const convertedStats = await fs.stat(outputPath);
-
-  return {
-    outputPath,
-    originalSize: originalStats.size,
-    convertedSize: convertedStats.size,
-  };
 }

@@ -1,9 +1,10 @@
 import { NotebookLMService } from "./notebookLMService";
 import { initializeBrowser } from "./browserService";
 import { info, success } from "./logger";
+import { GeneratedPodcast, toGeneratedPodcast } from "./types";
 
 export type PodcastResult = {
-  wavPath?: string;
+  metadata: GeneratedPodcast;
 };
 
 /**
@@ -30,11 +31,18 @@ export async function generatePodcastFromUrl(url: string): Promise<PodcastResult
     info("Generating studio podcast...");
     await service.generateStudioPodcast();
 
+    info("Extracting podcast metadata...");
+    const intentionMetadata = await service.getPodcastMetadata(url);
+
     info("Downloading generated podcast...");
     const wavPath = await service.downloadStudioPodcast();
 
     success("Podcast WAV file generated successfully from NotebookLM");
-    return { wavPath };
+
+    // Convert intention metadata to generated podcast metadata
+    const generatedMetadata = toGeneratedPodcast(intentionMetadata, wavPath);
+
+    return { metadata: generatedMetadata };
   } finally {
     await browser.close();
     info("Browser closed successfully");
