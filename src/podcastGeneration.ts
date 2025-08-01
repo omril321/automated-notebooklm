@@ -31,14 +31,13 @@ export async function generatePodcastFromUrl(url: string): Promise<PodcastResult
     info("Generating studio podcast...");
     await service.generateStudioPodcast();
 
-    info("Extracting podcast metadata...");
-    const intentionMetadata = await service.getPodcastMetadata(url);
-
     info("Downloading generated podcast...");
     const wavPath = await service.downloadStudioPodcast();
 
     success("Podcast WAV file generated successfully from NotebookLM");
 
+    info("Extracting podcast metadata...");
+    const intentionMetadata = await service.getPodcastMetadata(url);
     // Convert intention metadata to generated podcast metadata
     const generatedMetadata = toGeneratedPodcast(intentionMetadata, wavPath);
 
