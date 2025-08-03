@@ -10,6 +10,14 @@ Also consider the following rules:
 
 - @cursor-riper-date-conciseness-standards.mdc
 
+When writing TypeScript code, use the following rules:
+
+- @typescript-guidelines.mdc
+
+When writing tests, use the following rules:
+
+- @testing-practices.mdc
+
 When you follow the RIPER framework, mention which phase you are in, and what the next step is. Before moving to next phase, ask for permission.
 
 Update the memory bank files as needed, as specified by the RIPER framework instructions.

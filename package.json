@@ -26,6 +26,8 @@
   },
   "license": "ISC",
   "dependencies": {
+    "@mondaydotcomorg/api": "^11.0.0",
+    "@mondaydotcomorg/api-types": "^5.0.5",
     "@types/fluent-ffmpeg": "^2.1.27",
     "chalk": "^4.1.2",
     "dotenv": "^17.2.1",
