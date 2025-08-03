@@ -1,10 +1,11 @@
 import { MondayConfig } from "./types";
 import { MondayError, MondayErrorType } from "./errors";
+import { ColumnType } from "@mondaydotcomorg/api";
 
 const REQUIRED_COLUMNS = {
-  podcastLink: { title: "Podcast link", type: "url" },
-  type: { title: "Type", type: "status" },
-  sourceUrl: { title: "🔗", type: "url" },
+  podcastLink: { title: "Podcast link", type: ColumnType.Link },
+  type: { title: "Type", type: ColumnType.Status },
+  sourceUrl: { title: "🔗", type: ColumnType.Link },
 } as const;
 
 /**
