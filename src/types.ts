@@ -51,6 +51,7 @@ export interface UploadedPodcast extends BaseMetadata {
   wavPath: string;
   mp3Path: string;
   uploadedAt: Date;
+  podcastUrl: string;
 }
 
 /**
@@ -109,10 +110,11 @@ export function toConvertedPodcast(metadata: GeneratedPodcast, mp3Path: string):
 /**
  * Progress metadata to uploaded stage
  */
-export function toUploadedPodcast(metadata: ConvertedPodcast): UploadedPodcast {
+export function toUploadedPodcast(metadata: ConvertedPodcast, podcastUrl: string): UploadedPodcast {
   return {
     ...metadata,
     stage: "uploaded",
     uploadedAt: new Date(),
+    podcastUrl,
   };
 }

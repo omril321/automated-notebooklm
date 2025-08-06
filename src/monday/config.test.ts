@@ -104,23 +104,4 @@ describe("Monday.com Configuration Service", () => {
       expect(() => createConfigFromEnvironment()).toThrow(MondayError);
     });
   });
-
-  describe("getRequiredColumns", () => {
-    it("should return required column configuration", () => {
-      const columns = getRequiredColumns();
-
-      expect(columns).toEqual({
-        podcastLink: { title: "Podcast link", type: "url" },
-        type: { title: "Type", type: "status" },
-        sourceUrl: { title: "🔗", type: "url" },
-      });
-    });
-
-    it("should return same object on multiple calls (referential equality)", () => {
-      const columns1 = getRequiredColumns();
-      const columns2 = getRequiredColumns();
-
-      expect(columns1).toBe(columns2);
-    });
-  });
 });

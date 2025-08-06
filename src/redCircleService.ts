@@ -35,8 +35,12 @@ export async function uploadEpisode(podcast: ConvertedPodcast): Promise<Uploaded
     info(`✅ Successfully uploaded episode: ${podcast.title}`);
     info("Episode is now processing on RedCircle.");
 
-    // Return metadata with updated upload status
-    return toUploadedPodcast(podcast);
+    // Get the current URL from the browser (podcast page)
+    const podcastUrl = page.url();
+    info(`📄 Podcast URL: ${podcastUrl}`);
+
+    // Return metadata with updated upload status and URL
+    return toUploadedPodcast(podcast, podcastUrl);
   } catch (err) {
     await handleUploadError(page, err);
     throw err;

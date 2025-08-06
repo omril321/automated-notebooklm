@@ -1,40 +1,28 @@
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
 import { error } from "../logger";
-import { generateAndUpload, uploadExistingFile } from "../generateAndUpload";
+import { generateAndUpload, generateUsingMondayBoard } from "../generateAndUpload";
 
 // Parse command line arguments
 const argv = yargs(hideBin(process.argv))
   .option("url", {
     description: "URL to generate podcast from",
     type: "string",
+    default: undefined,
   })
-  .option("file", {
-    description: "Path to existing MP3 file to upload directly",
-    type: "string",
-  })
-  .option("title", {
-    description: "Title for the episode (for direct upload)",
-    type: "string",
-  })
-  .option("description", {
-    description: "Description for the episode (for direct upload)",
-    type: "string",
-  })
-  .option("no-upload", {
-    description: "Skip uploading the podcast to the hosting service",
+
+  .option("monday-mode", {
+    description: "Process podcasts from Monday board candidates instead of single URL",
     type: "boolean",
-    default: false,
+    default: true,
   })
   .check((argv) => {
-    if (!argv.url && !argv.file) {
-      throw new Error("Either --url or --file is required");
+    if (argv["monday-mode"]) {
+      // Monday mode doesn't require url or file
+      return true;
     }
-    if (argv.url && argv.file) {
-      throw new Error("Cannot use both --url and --file together");
-    }
-    if ((argv.title || argv.description) && !argv.file) {
-      throw new Error("--title and --description can only be used with --file");
+    if (!argv.url) {
+      throw new Error("Either --url,  --monday-mode is required");
     }
     return true;
   })
@@ -43,18 +31,13 @@ const argv = yargs(hideBin(process.argv))
   .parseSync();
 
 async function run() {
+  const isMondayMode = argv["monday-mode"];
   try {
-    if (argv.file) {
-      // Direct upload mode
-      await uploadExistingFile(argv.file, {
-        title: argv.title,
-        description: argv.description,
-      });
-    } else if (argv.url) {
-      // Generate and upload mode
-      await generateAndUpload(argv.url, {
-        skipUpload: argv["no-upload"],
-      });
+    if (isMondayMode) {
+      await generateUsingMondayBoard();
+    } else {
+      const url = argv.url!;
+      await generateAndUpload(url);
     }
   } catch (err) {
     error(`Failed to run podcast process: ${err}`);
@@ -62,5 +45,4 @@ async function run() {
   }
 }
 
-// Run the script
 run();

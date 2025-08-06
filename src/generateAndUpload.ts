@@ -1,9 +1,9 @@
 import { generatePodcastFromUrl } from "./podcastGeneration";
 import { convertToMp3 } from "./audioConversionService";
 import { uploadEpisode } from "./redCircleService";
-import { info, success } from "./logger";
-import * as path from "path";
-import { toUploadedPodcast, toConvertedPodcast, toGeneratedPodcast } from "./types";
+import { error, info, success } from "./logger";
+import { UploadedPodcast } from "./types";
+import { getPodcastCandidates, updateItemWithGeneratedPodcastUrl } from "./monday/service";
 
 export type GenerateAndUploadOptions = {
   skipUpload?: boolean;
@@ -20,18 +20,13 @@ export type DirectUploadOptions = {
  * @param url Source URL to generate podcast from
  * @param options Flow options
  */
-export async function generateAndUpload(url: string, options: GenerateAndUploadOptions = {}) {
-  const { skipUpload = false, outputDir = "./downloads" } = options;
+export async function generateAndUpload(url: string, options: GenerateAndUploadOptions = {}): Promise<UploadedPodcast> {
+  const { outputDir = "./downloads" } = options;
 
   info("Starting podcast generation and upload...");
 
   info("Step 1: Generating podcast...");
   const { metadata: generatedPodcast } = await generatePodcastFromUrl(url);
-
-  if (skipUpload) {
-    info("Skipping conversion and upload as requested");
-    return;
-  }
 
   info("Step 2: Converting to MP3...");
   // Convert the WAV to MP3
@@ -40,48 +35,48 @@ export async function generateAndUpload(url: string, options: GenerateAndUploadO
   success(`MP3 conversion completed: ${convertedPodcast.mp3Path}`);
 
   info("Step 3: Uploading to hosting service...");
-  await uploadEpisode(convertedPodcast);
-
-  // Mark as uploaded in metadata
-  const uploadedPodcast = toUploadedPodcast(convertedPodcast);
+  const uploadedPodcast = await uploadEpisode(convertedPodcast);
 
   success(`Episode "${uploadedPodcast.title}" uploaded successfully!`);
+
+  return uploadedPodcast;
 }
 
-/**
- * Upload an existing audio file directly to hosting service
- * @param filePath Path to the MP3 file to upload
- * @param options Upload options (title, description)
- */
-export async function uploadExistingFile(filePath: string, options: DirectUploadOptions = {}) {
-  info(`Starting direct upload for file: ${filePath}`);
+export async function generateUsingMondayBoard(): Promise<void> {
+  info("🔍 Fetching podcast candidates from Monday board...");
 
-  if (!filePath.endsWith(".mp3")) {
-    throw new Error("Only MP3 files are supported for direct upload");
+  const candidates = await getPodcastCandidates();
+  success(`📋 Found ${candidates.length} podcast candidates`);
+
+  if (candidates.length === 0) {
+    info(
+      "🎯 No valid podcast candidates found. Make sure your Monday board view contains articles with valid URLs and empty podcast link fields."
+    );
+    return;
   }
 
-  // Generate default title from filename if not provided
-  const defaultTitle = path.basename(filePath, ".mp3");
+  for (const candidate of candidates) {
+    if (!candidate.sourceUrl) {
+      error(`❌ Skipping candidate ${candidate.id}: No source URL found`);
+      continue;
+    }
 
-  // Create metadata
-  const intentionMetadata = toGeneratedPodcast(
-    {
-      stage: "intention",
-      sourceUrls: [`file://${filePath}`],
-      title: options.title || defaultTitle,
-      description: options.description || `Uploaded from file: ${defaultTitle}`,
-    },
-    filePath
-  );
+    info(`\n🎙️ Processing: ${candidate.name}`);
+    info(`🔗 Source URL: ${candidate.sourceUrl}`);
 
-  // Create converted podcast metadata
-  const convertedPodcast = toConvertedPodcast(intentionMetadata, filePath);
+    try {
+      const { podcastUrl } = await generateAndUpload(candidate.sourceUrl);
 
-  info(`Uploading to hosting service with title: ${convertedPodcast.title}`);
-  await uploadEpisode(convertedPodcast);
+      info(`🎯 Generated podcast URL: ${podcastUrl}`);
+      info(`📝 Updating Monday board for item ${candidate.id}...`);
 
-  // Mark as uploaded in metadata
-  const uploadedPodcast = toUploadedPodcast(convertedPodcast);
+      await updateItemWithGeneratedPodcastUrl(candidate.id, podcastUrl);
+      success(`✅ Successfully updated Monday board for: ${candidate.name} (id: ${candidate.id})`);
+    } catch (candidateError) {
+      error(`❌ Failed to process candidate ${candidate.id}: ${candidateError}`);
+      throw candidateError;
+    }
+  }
 
-  success(`Episode "${uploadedPodcast.title}" uploaded successfully!`);
+  success(`🎉 Completed processing ${candidates.length} podcast candidates!`);
 }

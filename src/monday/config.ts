@@ -2,10 +2,12 @@ import { MondayConfig } from "./types";
 import { MondayError, MondayErrorType } from "./errors";
 import { ColumnType } from "@mondaydotcomorg/api";
 
-const REQUIRED_COLUMNS = {
-  podcastLink: { title: "Podcast link", type: ColumnType.Link },
-  type: { title: "Type", type: ColumnType.Status },
-  sourceUrl: { title: "🔗", type: ColumnType.Link },
+// While this structure may change with time, currently it's hard coded.
+export const REQUIRED_COLUMNS = {
+  podcastLink: { title: "Podcast link", type: ColumnType.Link, id: "link_mktfz7w2" },
+  type: { title: "Type", type: ColumnType.Status, id: "label" },
+  sourceUrl: { title: "🔗", type: ColumnType.Link, id: "link" },
+  fittingForPodcast: { title: "Fitting for podcast?", type: ColumnType.Formula, id: "formula_mkth15m8" },
 } as const;
 
 /**
@@ -46,8 +48,3 @@ export const createConfigFromEnvironment = (): MondayConfig => {
     boardId,
   };
 };
-
-/**
- * Get required column configuration for validation
- */
-export const getRequiredColumns = () => REQUIRED_COLUMNS;

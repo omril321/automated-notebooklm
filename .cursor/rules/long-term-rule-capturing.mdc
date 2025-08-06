@@ -1,0 +1,34 @@
+---
+description: Alert when long‑term coding standards or architecture decisions appear.
+globs:
+alwaysApply: true
+---
+
+# Long‑Term Instruction Alert
+
+## Context
+
+‑ Triggers when someone writes guidance likely meant for long‑term use: e.g. "we should always do X", "avoid Y", "standard is Z", "I always do X".
+
+## Action
+
+‑ Send an alert to user recommending they capture this in an MDC file or project documentation. Wrap the rule in a 📐 and 📐 tags.
+
+## Examples
+
+<example>
+Message: “From now on we should use KebabCase for component names.”
+Outcome: Alert the user and propose an MDC entry:
+
+📐 I suggest you capture this in an MDC file or project documentation as following:
+
+_rule goes here_
+
+📐
+
+</example>
+
+<example type="invalid">
+Message: “Also fix typo on line 10.”  
+Outcome: No alert (too short‑lived).
+</example>
