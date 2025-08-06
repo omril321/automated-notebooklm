@@ -17,7 +17,7 @@ export type SourceBoardItem = {
   readonly id: string;
   readonly name: string;
   readonly sourceUrlValue?: { url?: string | null; text?: string | null } | null;
-  readonly fittingForPodcast: boolean;
+  readonly podcastFitness: number;
 };
 
 // Application-specific filtered article candidate type

@@ -1,9 +1,5 @@
-/**
- * Tests for Monday.com Configuration Service
- */
-
 import { describe, it, expect, beforeEach, afterEach, beforeAll } from "vitest";
-import { createConfigFromEnvironment, getRequiredColumns } from "./config";
+import { createConfigFromEnvironment } from "./config";
 import { MondayError, MondayErrorType } from "./errors";
 
 describe("Monday.com Configuration Service", () => {

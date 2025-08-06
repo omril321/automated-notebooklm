@@ -4,10 +4,10 @@ import { ColumnType } from "@mondaydotcomorg/api";
 
 // While this structure may change with time, currently it's hard coded.
 export const REQUIRED_COLUMNS = {
-  podcastLink: { title: "Podcast link", type: ColumnType.Link, id: "link_mktfz7w2" },
+  podcastLink: { title: "Podcast link", type: ColumnType.Text, id: "text_mktjay7" },
   type: { title: "Type", type: ColumnType.Status, id: "label" },
   sourceUrl: { title: "🔗", type: ColumnType.Link, id: "link" },
-  fittingForPodcast: { title: "Fitting for podcast?", type: ColumnType.Formula, id: "formula_mkth15m8" },
+  podcastFitness: { title: "Podcast fitness", type: ColumnType.Formula, id: "formula_mkth15m8" },
 } as const;
 
 /**

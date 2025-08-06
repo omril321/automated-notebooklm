@@ -1,6 +1,6 @@
 # σ₄: Active Context
 
-_v1.20 | Created: 24-07-2025 | Updated: 2025-08-06_
+_v1.22 | Created: 24-07-2025 | Updated: 2025-08-06_
 _Π: DEVELOPMENT | Ω: REVIEW_
 
 ## 🔮 Current Focus
@@ -18,19 +18,19 @@ _Π: DEVELOPMENT | Ω: REVIEW_
 
 **User's Latest Production Enhancements (2025-08-06):**
 
-1. ✅ **Smart Filtering Column**: Added `fittingForPodcast` boolean column for intelligent pre-filtering
-2. ✅ **Enhanced Type System**: `SourceBoardItem` interface + template literal URLs (`\`${"http"}${string}\``)
-3. ✅ **Formula Column Support**: Proper handling of Monday formula columns with `display_value` parsing
-4. ✅ **Advanced Data Parsing**: `parseBoardItems()` and `parseSourceUrl()` functions with type guards
-5. ✅ **Production Scalability**: 500-item limit detection with pagination readiness
-6. ✅ **Bulletproof Error Handling**: Safe JSON parsing and comprehensive validation
+1. ✅ **Numerical Fitness Scoring**: Replaced boolean `fittingForPodcast` with numerical `podcastFitness` for intelligent ranking
+2. ✅ **Smart Candidate Selection**: Filter by `podcastFitness > 0` and sort descending by fitness score (best candidates first)
+3. ✅ **Enhanced Type System**: `SourceBoardItem` interface with numerical fitness + template literal URLs (`\`${"http"}${string}\``)
+4. ✅ **Formula Column Optimization**: Monday formula columns with numerical calculations for ranking
+5. ✅ **Simplified Update Logic**: Streamlined podcast URL updates with direct text field assignment
+6. ✅ **Performance Enhancement**: Hard-coded column IDs with Text type for optimal Monday integration
 
 **Results**: Production-ready system with intelligent filtering, bulletproof type safety, and scalability
 
 ## 📎 Context References
 
-- 📄 **Key Files**: [src/monday/service.ts (production-enhanced), src/monday/types.ts (SourceBoardItem), src/monday/config.ts (fittingForPodcast)]
-- 💻 **Production Features**: [Smart filtering, template literal URLs, formula columns, scalability planning]
+- 📄 **Key Files**: [src/monday/service.ts (fitness-enhanced), src/monday/types.ts (SourceBoardItem), src/monday/config.ts (podcastFitness)]
+- 💻 **Production Features**: [Fitness scoring, template literal URLs, formula columns, scalability optimization]
 - 📚 **Type Safety**: [SourceBoardItem interface, LinkValue integration, type guards, template literals]
 - 📁 **Module Structure**: [src/monday/ - production-ready, scalable, intelligent filtering]
 - 🔄 **Phase Excellence**: Review (Ω₅) - user delivered production-grade enhancements
@@ -40,7 +40,7 @@ _Π: DEVELOPMENT | Ω: REVIEW_
 
 - 🟢 **Implementation**: Monday board integration 100% complete and working
 - 🟢 **Architecture**: User refactored to cleaner structure with `generateUsingMondayBoard()`
-- 🟢 **Smart Filtering**: `fittingForPodcast` column for intelligent article pre-filtering
+- 🟢 **Numerical Fitness Scoring**: `podcastFitness` number-based ranking system replacing boolean filtering for intelligent candidate selection
 - 🟢 **Type Safety Excellence**: Template literal URLs + SourceBoardItem for bulletproof typing
 - 🟢 **Formula Support**: Proper handling of Monday formula columns with display_value
 - 🟢 **Production Scalability**: 500-item limit detection with pagination readiness

@@ -1,6 +1,6 @@
 # σ₃: Technical Context
 
-_v1.12 | Created: 24-07-2025 | Updated: 2025-08-06_
+_v1.14 | Created: 24-07-2025 | Updated: 2025-08-06_
 _Π: DEVELOPMENT | Ω: REVIEW_
 
 ## 🛠️ Technology Stack
@@ -21,13 +21,13 @@ _Π: DEVELOPMENT | Ω: REVIEW_
 
 **Production-Grade Implementation Delivered:**
 
-- **Smart Filtering System**: `fittingForPodcast` column for intelligent article pre-filtering
+- **Numerical Fitness System**: `podcastFitness` number-based scoring replacing boolean filtering for intelligent ranking
 - **Advanced Type Safety**: Template literal URLs (`\`${"http"}${string}\``) + `SourceBoardItem` interface
-- **Formula Column Support**: Proper handling of Monday formula columns with `display_value` parsing
-- **Enhanced Data Parsing**: `parseBoardItems()` and `parseSourceUrl()` with type guards
-- **Production Scalability**: 500-item limit detection with pagination readiness
-- **Bulletproof Error Handling**: Safe JSON parsing and comprehensive validation
-- **Business Logic Integration**: Intelligent filtering with formula-based boolean logic
+- **Smart Candidate Selection**: Filter fitness > 0, sort descending by score for optimal prioritization
+- **Formula Column Integration**: Monday formula columns with numerical fitness calculations
+- **Streamlined Updates**: Direct text field assignment for podcast URLs (simplified from link objects)
+- **Performance Optimization**: Hard-coded column IDs with Text type for optimal Monday integration
+- **Production Reliability**: Simplified update logic with comprehensive error handling
 
 **Production Features:**
 
@@ -37,21 +37,22 @@ export type ArticleCandidate = {
   readonly sourceUrl: `${"http"}${string}`; // Only HTTP URLs allowed
 };
 
-// Smart Filtering with Business Logic
-const filterCandidates = (items: SourceBoardItem[]): ArticleCandidate[] => {
-  return items.filter((item): item is SourceBoardItem =>
-    Boolean(item.fittingForPodcast && item.sourceUrlValue?.url?.startsWith("http"))
-  );
+// Numerical Fitness-Based Selection with Ranking
+const findCandidates = (items: SourceBoardItem[]): ArticleCandidate[] => {
+  return items
+    .filter((item) => Boolean(item.podcastFitness > 0))  // Only fitness > 0
+    .sort((a, b) => b.podcastFitness - a.podcastFitness) // Highest fitness first
+    .map(item => ({ id: item.id, name: item.name, sourceUrl: item.sourceUrlValue?.url }));
 };
 
-// Formula Column Support
-fittingForPodcast: rawFittingForPodcast?.display_value?.toLowerCase() === "true";
+// Formula Column Integration
+podcastFitness: { title: "Podcast fitness", type: ColumnType.Formula, id: "formula_mkth15m8" }
 ```
 
 **Usage Pattern:**
 
 ```bash
-# Process candidates from Monday board (with smart filtering)
+# Process candidates from Monday board (with numerical fitness ranking)
 yarn generatePodcastForUrl --monday-mode
 
 # Traditional single URL processing (unchanged)
@@ -76,9 +77,10 @@ yarn generatePodcastForUrl --url "https://example.com/article"
 ```typescript
 // Consolidated Configuration (Single Source of Truth)
 const REQUIRED_COLUMNS = {
-  podcastLink: { title: "Podcast link", type: "url" },
-  type: { title: "Type", type: "status" },
-  sourceUrl: { title: "🔗", type: "url" },
+  podcastLink: { title: "Podcast link", type: ColumnType.Text, id: "text_mktjay7" },
+  type: { title: "Type", type: ColumnType.Status, id: "label" },
+  sourceUrl: { title: "🔗", type: ColumnType.Link, id: "link" },
+  podcastFitness: { title: "Podcast fitness", type: ColumnType.Formula, id: "formula_mkth15m8" },
 } as const;
 
 // Functional Service Pattern
@@ -90,7 +92,7 @@ export const validateBoardAccess = async (boardId: string): Promise<void>
 **Integration Pattern Established:**
 
 - **Step 1**: Board access validation and configuration loading
-- **Step 2**: Filter candidates (Type=Article AND empty Podcast link)
+- **Step 2**: Filter candidates (podcastFitness > 0, sorted descending by numerical fitness score)
 - **Step 3**: Update board with generated podcast URLs
 
 **Ready for Service Layer**: Foundation provides all infrastructure for core services implementation

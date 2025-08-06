@@ -5,39 +5,18 @@ import { ArticleCandidate, SourceBoardItem } from "./types";
 import { validateBoardAccess } from "./board-validator";
 import { GetBoardItemsOpQuery, LinkValue } from "@mondaydotcomorg/api";
 
-const filterCandidates = (items: SourceBoardItem[]): ArticleCandidate[] => {
-  return items
-    .filter((item): item is SourceBoardItem =>
-      Boolean(item.fittingForPodcast && item.sourceUrlValue?.url?.startsWith("http"))
-    )
-    .map((item) => ({
-      id: item.id,
-      name: item.name,
-      sourceUrl: item.sourceUrlValue?.url as `${"http"}${string}`,
-    }));
-};
-
-const findPodcastLink = (response: GetBoardItemsOpQuery) => {
-  if (response.boards?.length !== 1) {
-    throw new Error("Unexpected response from Monday API - expected 1 board, got " + response.boards?.length);
-  }
-  if (response.boards[0]?.items_page?.items?.length !== 1) {
-    throw new Error(
-      "Unexpected response from Monday API - expected 1 item, got " + response.boards?.[0]?.items_page?.items?.length
-    );
-  }
-  const item = response.boards[0].items_page.items[0];
-  const podcastLinkColumn = item.column_values.find((cv) => cv.id === REQUIRED_COLUMNS.podcastLink.id);
-  return podcastLinkColumn?.value as string | undefined;
-};
-
-/**
- * Check if podcast link field is already populated
- */
-const validatePodcastLinkEmpty = (podcastLinkValue: string | undefined, itemId: string): void => {
-  if (podcastLinkValue) {
-    throw new MondayError(MondayErrorType.API_ERROR, `Podcast link field is not empty for item ${itemId}`);
-  }
+const findCandidates = (items: SourceBoardItem[]): ArticleCandidate[] => {
+  return (
+    items
+      .filter((item): item is SourceBoardItem => Boolean(item.podcastFitness > 0))
+      // sort descending - highest fitness first
+      .sort((a, b) => b.podcastFitness - a.podcastFitness)
+      .map((item) => ({
+        id: item.id,
+        name: item.name,
+        sourceUrl: item.sourceUrlValue?.url as `${"http"}${string}`,
+      }))
+  );
 };
 
 function parseSourceUrl(sourceUrlRaw: string): Pick<LinkValue, "url" | "text"> | undefined {
@@ -57,7 +36,7 @@ function parseBoardItems(items: GetBoardItemsOpQuery): SourceBoardItem[] {
   return items.boards[0].items_page.items.map((item) => {
     const rawSourceUrl = item.column_values.find((cv) => cv.id === REQUIRED_COLUMNS.sourceUrl.id)?.value;
     const rawFittingForPodcast = item.column_values.find(
-      (cv) => cv.id === REQUIRED_COLUMNS.fittingForPodcast.id
+      (cv) => cv.id === REQUIRED_COLUMNS.podcastFitness.id
     ) as unknown as {
       display_value: string;
     };
@@ -66,7 +45,7 @@ function parseBoardItems(items: GetBoardItemsOpQuery): SourceBoardItem[] {
       id: item.id,
       name: item.name,
       sourceUrlValue,
-      fittingForPodcast: rawFittingForPodcast?.display_value?.toLowerCase() === "true",
+      podcastFitness: Number(rawFittingForPodcast.display_value),
     };
   });
 }
@@ -111,7 +90,7 @@ export async function getPodcastCandidates(maxItems: number = 3): Promise<Articl
       "Limit reached - we need to support pagination or add some filtering"
     );
   }
-  const candidates = filterCandidates(boardItems);
+  const candidates = findCandidates(boardItems);
   return candidates.slice(0, maxItems);
 }
 
@@ -127,18 +106,10 @@ export async function updateItemWithGeneratedPodcastUrl(itemId: string, podcastU
   await validateBoardAccess(config.boardId);
   const apiClient = getMondayApiClient();
 
-  const item = await apiClient.operations.getBoardItemsOp({ ids: [itemId] });
-
-  const podcastLinkValue = findPodcastLink(item);
-  validatePodcastLinkEmpty(podcastLinkValue, itemId);
-
   await apiClient.operations.changeColumnValueOp({
     boardId: config.boardId,
     itemId,
     columnId: REQUIRED_COLUMNS.podcastLink.id,
-    value: JSON.stringify({
-      url: podcastUrl,
-      text: podcastUrl,
-    }),
+    value: `"${podcastUrl}"`,
   });
 }
