@@ -2,6 +2,15 @@
  * Shared types for podcast generation and processing
  */
 
+// Article content analysis result
+export type ArticleAnalysis = {
+  title: string;
+  codeContentPercentage: number;
+  isVideoArticle: boolean;
+  totalTextLength: number;
+  description: string | undefined;
+};
+
 /**
  * Base metadata interface for all podcast stages
  */

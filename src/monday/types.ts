@@ -1,11 +1,3 @@
-/**
- * Monday.com Integration Types
- * Application-specific types that extend the official Monday.com API types
- */
-
-// Re-export the official Monday.com types we need
-export type { Board, Column, ColumnValue } from "@mondaydotcomorg/api";
-
 // Application-specific configuration type (not available in the official packages)
 export type MondayConfig = {
   readonly apiToken: string;
@@ -17,12 +9,23 @@ export type SourceBoardItem = {
   readonly id: string;
   readonly name: string;
   readonly sourceUrlValue?: { url?: string | null; text?: string | null } | null;
+  readonly type: "Article" | string | undefined;
   readonly podcastFitness: number;
+  readonly metadata?: string | null;
+  readonly nonPodcastable?: boolean | null;
 };
 
-// Application-specific filtered article candidate type
 export type ArticleCandidate = {
   readonly id: string;
   readonly name: string;
   readonly sourceUrl: `${"http"}${string}`;
+};
+
+export type ArticleMetadata = {
+  readonly title: string;
+  readonly description: string | undefined;
+  readonly contentType: "Video" | "Article";
+  readonly isNonPodcastable: boolean;
+  readonly codeContentPercentage: number;
+  readonly totalTextLength: number;
 };

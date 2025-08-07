@@ -1,7 +1,7 @@
 # σ₂: System Patterns
 
-_v1.0 | Created: 24-07-2025 | Updated: 28-07-2025_
-_Π: INITIALIZING | Ω: RESEARCH_
+_v1.1 | Created: 24-07-2025 | Updated: 07-08-2025_
+_Π: DEVELOPMENT | Ω: REVIEW_
 
 ## 🏛️ Architecture Overview
 
