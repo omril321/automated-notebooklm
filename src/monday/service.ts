@@ -259,6 +259,12 @@ async function getBoardItems(): Promise<SourceBoardItem[]> {
   const response = await apiClient.request<GetBoardItemsOpQuery>(query, { boardId: [config.boardId] });
 
   const items = parseBoardItems(response);
+  if (items.length === LIMIT) {
+    throw new Error(
+      `Retrieved ${items.length} items from Monday board, which is the limit of ${LIMIT} items. This means we need to implement pagination.
+Another options is to query only non-done items.`
+    );
+  }
   logger.success(`Retrieved ${items.length} items from Monday board`);
 
   return items;
