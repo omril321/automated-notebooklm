@@ -35,51 +35,26 @@ export interface PodcastIntention extends BasePodcastDetails {
 /**
  * Podcast that has been generated and downloaded as WAV
  */
-export interface GeneratedPodcast extends BasePodcastDetails {
+export interface GeneratedPodcast extends Omit<PodcastIntention, "stage"> {
   stage: "generated";
-  sourceUrls: string[];
   wavPath: string;
 }
 
 /**
  * Podcast that has been converted to MP3 format
  */
-export interface ConvertedPodcast extends BasePodcastDetails {
+export interface ConvertedPodcast extends Omit<GeneratedPodcast, "stage"> {
   stage: "converted";
-  sourceUrls: string[];
-  wavPath: string;
   mp3Path: string;
 }
 
 /**
  * Podcast that has been uploaded to hosting platform
  */
-export interface UploadedPodcast extends BasePodcastDetails {
+export interface UploadedPodcast extends Omit<ConvertedPodcast, "stage"> {
   stage: "uploaded";
-  sourceUrls: string[];
-  wavPath: string;
-  mp3Path: string;
   uploadedAt: Date;
   podcastUrl: string;
-}
-
-/**
- * Type guards for checking details stages
- */
-export function isPodcastIntention(details: PodcastDetails): details is PodcastIntention {
-  return details.stage === "intention";
-}
-
-export function isGeneratedPodcast(details: PodcastDetails): details is GeneratedPodcast {
-  return details.stage === "generated";
-}
-
-export function isConvertedPodcast(details: PodcastDetails): details is ConvertedPodcast {
-  return details.stage === "converted";
-}
-
-export function isUploadedPodcast(details: PodcastDetails): details is UploadedPodcast {
-  return details.stage === "uploaded";
 }
 
 /**
@@ -97,20 +72,27 @@ export function createPodcastIntention(sourceUrl: string, title: string, descrip
 /**
  * Progress details to generated stage
  */
-export function toGeneratedPodcast(details: PodcastDetails, wavPath: string): GeneratedPodcast {
+export function toGeneratedPodcast(
+  intention: PodcastIntention,
+  wavPath: string,
+  title: string,
+  description: string
+): GeneratedPodcast {
   return {
-    ...details,
+    ...intention,
     stage: "generated",
     wavPath,
+    title,
+    description,
   };
 }
 
 /**
  * Progress details to converted stage
  */
-export function toConvertedPodcast(details: GeneratedPodcast, mp3Path: string): ConvertedPodcast {
+export function toConvertedPodcast(generated: GeneratedPodcast, mp3Path: string): ConvertedPodcast {
   return {
-    ...details,
+    ...generated,
     stage: "converted",
     mp3Path,
   };
@@ -119,9 +101,9 @@ export function toConvertedPodcast(details: GeneratedPodcast, mp3Path: string): 
 /**
  * Progress details to uploaded stage
  */
-export function toUploadedPodcast(details: ConvertedPodcast, podcastUrl: string): UploadedPodcast {
+export function toUploadedPodcast(converted: ConvertedPodcast, podcastUrl: string): UploadedPodcast {
   return {
-    ...details,
+    ...converted,
     stage: "uploaded",
     uploadedAt: new Date(),
     podcastUrl,

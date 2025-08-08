@@ -4,7 +4,7 @@ import { info, success } from "./logger";
 import { GeneratedPodcast, toGeneratedPodcast } from "./types";
 
 export type PodcastResult = {
-  metadata: GeneratedPodcast;
+  details: GeneratedPodcast;
 };
 
 /**
@@ -36,12 +36,17 @@ export async function generatePodcastFromUrl(url: string): Promise<PodcastResult
 
     success("Podcast WAV file generated successfully from NotebookLM");
 
-    info("Extracting podcast metadata...");
-    const intentionMetadata = await service.getPodcastMetadata(url);
-    // Convert intention metadata to generated podcast metadata
-    const generatedMetadata = toGeneratedPodcast(intentionMetadata, wavPath);
+    info("Extracting podcast details...");
+    const { title, description } = await service.getPodcastDetails();
+    const details: GeneratedPodcast = {
+      description,
+      sourceUrls: [url],
+      title,
+      stage: "generated",
+      wavPath,
+    };
 
-    return { metadata: generatedMetadata };
+    return { details };
   } finally {
     await browser.close();
     info("Browser closed successfully");

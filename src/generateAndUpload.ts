@@ -26,11 +26,11 @@ export async function generateAndUpload(url: string, options: GenerateAndUploadO
   info("Starting podcast generation and upload...");
 
   info("Step 1: Generating podcast...");
-  const { metadata: generatedPodcast } = await generatePodcastFromUrl(url);
+  const { details: generatedDetails } = await generatePodcastFromUrl(url);
 
   info("Step 2: Converting to MP3...");
   // Convert the WAV to MP3
-  const convertedPodcast = await convertToMp3(generatedPodcast, { outputDir });
+  const convertedPodcast = await convertToMp3(generatedDetails, { outputDir });
 
   success(`MP3 conversion completed: ${convertedPodcast.mp3Path}`);
 

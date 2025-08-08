@@ -2,7 +2,7 @@ import { Download, Page } from "playwright";
 import { info, success } from "./logger";
 import { loadConfig } from "./configService";
 import { saveToTempFile } from "./downloadUtils";
-import { PodcastIntention, createPodcastIntention } from "./types";
+import { GeneratedPodcast, PodcastIntention, createPodcastIntention } from "./types";
 
 /**
  * Service for automating interactions with Google NotebookLM
@@ -192,14 +192,14 @@ export class NotebookLMService {
   }
 
   /**
-   * Get complete podcast metadata
-   * @returns Promise with podcast metadata
+   * Get complete details - title and description
+   * @returns Promise with podcast details
    */
-  async getPodcastMetadata(sourceUrl: string): Promise<PodcastIntention> {
-    info("Retrieving podcast metadata from NotebookLM...");
+  async getPodcastDetails(): Promise<{ title: string; description: string }> {
+    info("Retrieving podcast details from NotebookLM...");
 
     const [title, description] = await Promise.all([this.extractPodcastTitle(), this.extractPodcastDescription()]);
 
-    return createPodcastIntention(sourceUrl, title, description);
+    return { title, description };
   }
 }
