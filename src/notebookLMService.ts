@@ -52,18 +52,15 @@ export class NotebookLMService {
     info("Waiting for download button to become available (may take several minutes)...");
 
     // Look for the more options menu button with a long timeout - it takes a while to appear
-    const moreOptionsButton = this.page.locator("audio-player").locator("button", { hasText: "more_vert" });
-    const fiveMinutesMs = 5 * 60 * 1000;
-    await moreOptionsButton.waitFor({
-      state: "visible",
-      timeout: fiveMinutesMs,
-    });
+    const moreOptionsButton = this.page.locator(".artifact-button-content").locator("button", { hasText: "more_vert" });
+    await moreOptionsButton.waitFor({ state: "visible" });
 
-    await moreOptionsButton.click();
+    const timeToWaitForAudioGeneration = 6 * 60 * 1000; // 6 minutes
+    await moreOptionsButton.click({ timeout: timeToWaitForAudioGeneration });
 
     // Wait for the download link to appear with a long timeout
-    const downloadLink = this.page.locator("a[download]");
-    await downloadLink.waitFor({
+    const downloadButton = this.page.getByText("Download", { exact: true });
+    await downloadButton.waitFor({
       state: "visible",
       timeout: 30000,
     });
@@ -73,7 +70,7 @@ export class NotebookLMService {
       _download.path().then((path) => success(`Downloaded file to ${path}`));
       download = _download;
     });
-    await downloadLink.click();
+    await downloadButton.click();
 
     // Brief wait for download to start
     await this.page.waitForTimeout(2000);
@@ -137,7 +134,7 @@ export class NotebookLMService {
     const languageCombobox = this.page.getByRole("combobox");
     await languageCombobox.click();
 
-    const languageOption = this.page.getByText(language, { exact: false });
+    const languageOption = this.page.getByText(language, { exact: true });
     await languageOption.click();
 
     const closeButton = this.page.getByRole("button", { name: "Close user settings" });
@@ -149,10 +146,13 @@ export class NotebookLMService {
   async generateStudioPodcast(): Promise<void> {
     info("Starting to generate Studio Podcast...");
 
-    const generateButton = this.page.getByText("Generate", { exact: true });
+    const studioPanel = this.page.locator(".studio-panel");
+    // Inside it, find the "Audio Overview" button
+    const generateButton = studioPanel.getByText("Audio Overview", { exact: true });
+    // TODO: wait for the button to be available
     await generateButton.click();
 
-    success("Clicked on generate button");
+    success("Clicked on Audio Overview button");
   }
 
   /**
