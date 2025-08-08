@@ -1,8 +1,4 @@
-/**
- * Tests for Monday service functionality
- */
-
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { getPodcastCandidates, updateItemWithGeneratedPodcastUrl } from "./service";
 import * as logger from "../logger";
 

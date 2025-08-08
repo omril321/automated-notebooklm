@@ -12,9 +12,9 @@ export type ArticleAnalysis = {
 };
 
 /**
- * Base metadata interface for all podcast stages
+ * Base details interface for all podcast stages
  */
-export interface BaseMetadata {
+export interface BasePodcastDetails {
   title: string;
   description: string;
 }
@@ -22,12 +22,12 @@ export interface BaseMetadata {
 /**
  * Union type for all podcast stages
  */
-export type PodcastMetadata = PodcastIntention | GeneratedPodcast | ConvertedPodcast | UploadedPodcast;
+export type PodcastDetails = PodcastIntention | GeneratedPodcast | ConvertedPodcast | UploadedPodcast;
 
 /**
  * Initial intent to create a podcast from source URLs
  */
-export interface PodcastIntention extends BaseMetadata {
+export interface PodcastIntention extends BasePodcastDetails {
   stage: "intention";
   sourceUrls: string[];
 }
@@ -35,7 +35,7 @@ export interface PodcastIntention extends BaseMetadata {
 /**
  * Podcast that has been generated and downloaded as WAV
  */
-export interface GeneratedPodcast extends BaseMetadata {
+export interface GeneratedPodcast extends BasePodcastDetails {
   stage: "generated";
   sourceUrls: string[];
   wavPath: string;
@@ -44,7 +44,7 @@ export interface GeneratedPodcast extends BaseMetadata {
 /**
  * Podcast that has been converted to MP3 format
  */
-export interface ConvertedPodcast extends BaseMetadata {
+export interface ConvertedPodcast extends BasePodcastDetails {
   stage: "converted";
   sourceUrls: string[];
   wavPath: string;
@@ -54,7 +54,7 @@ export interface ConvertedPodcast extends BaseMetadata {
 /**
  * Podcast that has been uploaded to hosting platform
  */
-export interface UploadedPodcast extends BaseMetadata {
+export interface UploadedPodcast extends BasePodcastDetails {
   stage: "uploaded";
   sourceUrls: string[];
   wavPath: string;
@@ -64,22 +64,22 @@ export interface UploadedPodcast extends BaseMetadata {
 }
 
 /**
- * Type guards for checking metadata stages
+ * Type guards for checking details stages
  */
-export function isPodcastIntention(metadata: PodcastMetadata): metadata is PodcastIntention {
-  return metadata.stage === "intention";
+export function isPodcastIntention(details: PodcastDetails): details is PodcastIntention {
+  return details.stage === "intention";
 }
 
-export function isGeneratedPodcast(metadata: PodcastMetadata): metadata is GeneratedPodcast {
-  return metadata.stage === "generated";
+export function isGeneratedPodcast(details: PodcastDetails): details is GeneratedPodcast {
+  return details.stage === "generated";
 }
 
-export function isConvertedPodcast(metadata: PodcastMetadata): metadata is ConvertedPodcast {
-  return metadata.stage === "converted";
+export function isConvertedPodcast(details: PodcastDetails): details is ConvertedPodcast {
+  return details.stage === "converted";
 }
 
-export function isUploadedPodcast(metadata: PodcastMetadata): metadata is UploadedPodcast {
-  return metadata.stage === "uploaded";
+export function isUploadedPodcast(details: PodcastDetails): details is UploadedPodcast {
+  return details.stage === "uploaded";
 }
 
 /**
@@ -95,33 +95,33 @@ export function createPodcastIntention(sourceUrl: string, title: string, descrip
 }
 
 /**
- * Progress metadata to generated stage
+ * Progress details to generated stage
  */
-export function toGeneratedPodcast(metadata: PodcastMetadata, wavPath: string): GeneratedPodcast {
+export function toGeneratedPodcast(details: PodcastDetails, wavPath: string): GeneratedPodcast {
   return {
-    ...metadata,
+    ...details,
     stage: "generated",
     wavPath,
   };
 }
 
 /**
- * Progress metadata to converted stage
+ * Progress details to converted stage
  */
-export function toConvertedPodcast(metadata: GeneratedPodcast, mp3Path: string): ConvertedPodcast {
+export function toConvertedPodcast(details: GeneratedPodcast, mp3Path: string): ConvertedPodcast {
   return {
-    ...metadata,
+    ...details,
     stage: "converted",
     mp3Path,
   };
 }
 
 /**
- * Progress metadata to uploaded stage
+ * Progress details to uploaded stage
  */
-export function toUploadedPodcast(metadata: ConvertedPodcast, podcastUrl: string): UploadedPodcast {
+export function toUploadedPodcast(details: ConvertedPodcast, podcastUrl: string): UploadedPodcast {
   return {
-    ...metadata,
+    ...details,
     stage: "uploaded",
     uploadedAt: new Date(),
     podcastUrl,
