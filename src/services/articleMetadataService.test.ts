@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { extractMetadataFromUrl, extractMetadataBatch } from "./articleMetadataService";
+import { extractMetadataFromUrl, extractMetadataBatch, finalizePodcastDetails } from "./articleMetadataService";
 import * as contentAnalysisService from "./contentAnalysisService";
 import { ArticleAnalysis } from "./articleMetadataService";
 import { ArticleMetadata } from "../monday/types";
@@ -111,6 +111,29 @@ describe("ArticleMetadataService", () => {
       );
 
       expect(result.description).toBeUndefined();
+    });
+  });
+
+  describe("finalizePodcastDetails", () => {
+    it("should compose description with numeric fields and percent", () => {
+      const metadata: ArticleMetadata = {
+        title: "T",
+        description: "D",
+        contentType: "Article",
+        isNonPodcastable: false,
+        codeContentPercentage: 12.345,
+        totalTextLength: 1234,
+      };
+
+      const result = finalizePodcastDetails(metadata, {
+        title: "Notebook Title",
+        description: "Notebook Description",
+      });
+
+      expect(result.title).toBe("Notebook Title");
+      expect(result.description).toContain("Notebook Description");
+      expect(result.description).toContain("Code content percentage: 12.345%");
+      expect(result.description).toContain("Total text length: 1234 characters");
     });
   });
 

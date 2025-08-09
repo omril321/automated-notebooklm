@@ -80,14 +80,24 @@ export async function extractMetadataBatch(urls: string[]): Promise<Map<string, 
 }
 
 export function finalizePodcastDetails(
-  urlMetadata: Partial<ArticleMetadata>,
+  urlMetadata: ArticleMetadata,
   notebookLmDetails: { title: string; description: string }
 ): { title: string; description: string } {
   const { description: notebookLmDescription } = notebookLmDetails;
 
+  if (!urlMetadata.codeContentPercentage || !urlMetadata.totalTextLength) {
+    const errMsg = `Code content percentage or total text length is not available for ${urlMetadata.title}. This indicates that something is wrong in the flow, perhaps some bug.`;
+    error(errMsg);
+    throw new Error(errMsg);
+  }
+
   const metadataDetailsStr = `
-  Code content percentage: ${urlMetadata.codeContentPercentage}%
-  Total text length: ${urlMetadata.totalTextLength} characters
+  Code content percentage: ${
+    Number.isFinite(urlMetadata.codeContentPercentage) ? `${urlMetadata.codeContentPercentage}%` : "N/A"
+  }
+  Total text length: ${
+    Number.isFinite(urlMetadata.totalTextLength) ? `${urlMetadata.totalTextLength} characters` : "N/A"
+  }
   `;
   const finalDescription = `${notebookLmDescription}\n\n==============\n\n${metadataDetailsStr}`;
 
