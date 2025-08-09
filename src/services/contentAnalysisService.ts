@@ -1,6 +1,6 @@
 import * as cheerio from "cheerio";
-import { ArticleAnalysis } from "../types";
 import { info, success, error } from "../logger";
+import { ArticleAnalysis } from "./articleMetadataService";
 
 /**
  * Extract content from meta tags using multiple selectors

@@ -39,7 +39,8 @@ export async function convertToMp3(
   await validateFfmpegInstallation();
 
   // Determine output path - either from options or generate from title
-  const outputPath = options.outputPath || generateOutputPath(podcast.title, options.outputDir || DEFAULT_OUTPUT_DIR);
+  const outputPath =
+    options.outputPath || generateOutputPath(podcast.metadata.title, options.outputDir || DEFAULT_OUTPUT_DIR);
 
   // Convert the file
   await convertWavToMp3(podcast.wavPath, { ...options, outputPath });

@@ -2,21 +2,13 @@
  * Shared types for podcast generation and processing
  */
 
-// Article content analysis result
-export type ArticleAnalysis = {
-  title: string;
-  codeContentPercentage: number;
-  isVideoArticle: boolean;
-  totalTextLength: number;
-  description: string | undefined;
-};
+import { ArticleMetadata } from "./monday/types";
 
 /**
  * Base details interface for all podcast stages
  */
 export interface BasePodcastDetails {
-  title: string;
-  description: string;
+  metadata: ArticleMetadata;
 }
 
 /**
@@ -38,6 +30,10 @@ export interface PodcastIntention extends BasePodcastDetails {
 export interface GeneratedPodcast extends Omit<PodcastIntention, "stage"> {
   stage: "generated";
   wavPath: string;
+  notebookLmDetails: {
+    title: string;
+    description: string;
+  };
 }
 
 /**
@@ -55,17 +51,18 @@ export interface UploadedPodcast extends Omit<ConvertedPodcast, "stage"> {
   stage: "uploaded";
   uploadedAt: Date;
   podcastUrl: string;
+  finalDescription: string;
+  finalTitle: string;
 }
 
 /**
  * Create a new podcast intention
  */
-export function createPodcastIntention(sourceUrl: string, title: string, description: string): PodcastIntention {
+export function createPodcastIntention(sourceUrl: string, metadata: ArticleMetadata): PodcastIntention {
   return {
     stage: "intention",
     sourceUrls: [sourceUrl],
-    title,
-    description,
+    metadata,
   };
 }
 
@@ -75,15 +72,16 @@ export function createPodcastIntention(sourceUrl: string, title: string, descrip
 export function toGeneratedPodcast(
   intention: PodcastIntention,
   wavPath: string,
-  title: string,
-  description: string
+  notebookLmDetails: {
+    title: string;
+    description: string;
+  }
 ): GeneratedPodcast {
   return {
     ...intention,
     stage: "generated",
     wavPath,
-    title,
-    description,
+    notebookLmDetails,
   };
 }
 
@@ -101,11 +99,18 @@ export function toConvertedPodcast(generated: GeneratedPodcast, mp3Path: string)
 /**
  * Progress details to uploaded stage
  */
-export function toUploadedPodcast(converted: ConvertedPodcast, podcastUrl: string): UploadedPodcast {
+export function toUploadedPodcast(
+  converted: ConvertedPodcast,
+  podcastUrl: string,
+  finalTitle: string,
+  finalDescription: string
+): UploadedPodcast {
   return {
     ...converted,
     stage: "uploaded",
     uploadedAt: new Date(),
     podcastUrl,
+    finalTitle,
+    finalDescription,
   };
 }

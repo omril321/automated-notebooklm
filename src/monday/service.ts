@@ -22,6 +22,7 @@ const findCandidates = (items: SourceBoardItem[]): ArticleCandidate[] => {
         id: item.id,
         name: item.name,
         sourceUrl: item.sourceUrlValue?.url as `${"http"}${string}`,
+        metadata: item.metadata ? JSON.parse(item.metadata) : undefined,
       }))
   );
 };

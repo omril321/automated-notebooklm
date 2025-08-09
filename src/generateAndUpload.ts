@@ -4,15 +4,11 @@ import { uploadEpisode } from "./redCircleService";
 import { error, info, success } from "./logger";
 import { UploadedPodcast } from "./types";
 import { getPodcastCandidates, updateItemWithGeneratedPodcastUrl } from "./monday/service";
+import { finalizePodcastDetails } from "./services/articleMetadataService";
 
 export type GenerateAndUploadOptions = {
   skipUpload?: boolean;
   outputDir?: string;
-};
-
-export type DirectUploadOptions = {
-  title?: string;
-  description?: string;
 };
 
 /**
@@ -26,7 +22,7 @@ export async function generateAndUpload(url: string, options: GenerateAndUploadO
   info("Starting podcast generation and upload...");
 
   info("Step 1: Generating podcast...");
-  const { details: generatedDetails } = await generatePodcastFromUrl(url);
+  const { details: generatedDetails, metadata: generatedMetadata } = await generatePodcastFromUrl(url);
 
   info("Step 2: Converting to MP3...");
   // Convert the WAV to MP3
@@ -34,10 +30,11 @@ export async function generateAndUpload(url: string, options: GenerateAndUploadO
 
   success(`MP3 conversion completed: ${convertedPodcast.mp3Path}`);
 
+  const { title, description } = finalizePodcastDetails(generatedMetadata, generatedDetails.notebookLmDetails);
   info("Step 3: Uploading to hosting service...");
-  const uploadedPodcast = await uploadEpisode(convertedPodcast);
+  const uploadedPodcast = await uploadEpisode(convertedPodcast, title, description);
 
-  success(`Episode "${uploadedPodcast.title}" uploaded successfully!`);
+  success(`Episode "${uploadedPodcast.finalTitle}" uploaded successfully!`);
 
   return uploadedPodcast;
 }

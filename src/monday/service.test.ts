@@ -147,7 +147,8 @@ describe("Monday Service", () => {
                     { id: "type", text: "Article" },
                     {
                       id: "metadata",
-                      value: '{"title": "Article 2", "contentType": "Article", "isNonPodcastable": false}',
+                      value:
+                        '{"title": "Article 2", "contentType": "Article", "isNonPodcastable": false, "codeContentPercentage": 10, "totalTextLength": 1000}',
                     },
                     { id: "non_podcastable", value: null },
                   ],
@@ -165,11 +166,23 @@ describe("Monday Service", () => {
         id: "item2",
         name: "Article 2",
         sourceUrl: "https://example.com/article2",
+        metadata: {
+          title: "Article 2",
+          contentType: "Article",
+          isNonPodcastable: false,
+          codeContentPercentage: 10,
+          totalTextLength: 1000,
+        },
       });
       expect(result[1]).toEqual({
         id: "item1",
         name: "Article 1",
         sourceUrl: "https://example.com/article1",
+        metadata: {
+          title: "Article 1",
+          contentType: "Article",
+          isNonPodcastable: false,
+        },
       });
     });
 

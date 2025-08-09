@@ -2,7 +2,6 @@ import { Download, Page } from "playwright";
 import { info, success } from "./logger";
 import { loadConfig } from "./configService";
 import { saveToTempFile } from "./downloadUtils";
-import { GeneratedPodcast, PodcastIntention, createPodcastIntention } from "./types";
 
 /**
  * Service for automating interactions with Google NotebookLM
@@ -55,7 +54,7 @@ export class NotebookLMService {
     const moreOptionsButton = this.page.locator(".artifact-button-content").locator("button", { hasText: "more_vert" });
     await moreOptionsButton.waitFor({ state: "visible" });
 
-    const timeToWaitForAudioGeneration = 6 * 60 * 1000; // 6 minutes
+    const timeToWaitForAudioGeneration = 12 * 60 * 1000; // 12 minutes
     await moreOptionsButton.click({ timeout: timeToWaitForAudioGeneration });
 
     // Wait for the download link to appear with a long timeout
@@ -147,10 +146,13 @@ export class NotebookLMService {
     info("Starting to generate Studio Podcast...");
 
     const studioPanel = this.page.locator(".studio-panel");
-    // Inside it, find the "Audio Overview" button
-    const generateButton = studioPanel.getByText("Audio Overview", { exact: true });
-    // TODO: wait for the button to be available
-    await generateButton.click();
+    const audioOverviewButton = studioPanel.getByRole("button", { name: "Audio Overview" });
+    await audioOverviewButton.waitFor({ state: "visible" });
+
+    const customizationButton = audioOverviewButton.getByLabel("Open customization options");
+    await customizationButton.waitFor({ state: "visible" });
+
+    await audioOverviewButton.click();
 
     success("Clicked on Audio Overview button");
   }

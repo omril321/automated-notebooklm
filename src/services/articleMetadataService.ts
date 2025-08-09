@@ -1,7 +1,14 @@
 import { ArticleMetadata } from "../monday/types";
-import { ArticleAnalysis } from "../types";
 import { analyzeArticleFromUrl } from "./contentAnalysisService";
 import { info, success, warning, error } from "../logger";
+
+export type ArticleAnalysis = {
+  title: string;
+  codeContentPercentage: number;
+  isVideoArticle: boolean;
+  totalTextLength: number;
+  description: string | undefined;
+};
 
 // Business logic constants
 const CODE_PERCENTAGE_THRESHOLD = 8;
@@ -70,6 +77,24 @@ export async function extractMetadataBatch(urls: string[]): Promise<Map<string, 
 
   success(`Batch analysis complete: processed ${urlToMetadata.size} URLs`);
   return urlToMetadata;
+}
+
+export function finalizePodcastDetails(
+  urlMetadata: Partial<ArticleMetadata>,
+  notebookLmDetails: { title: string; description: string }
+): { title: string; description: string } {
+  const { description: notebookLmDescription } = notebookLmDetails;
+
+  const metadataDetailsStr = `
+  Code content percentage: ${urlMetadata.codeContentPercentage}%
+  Total text length: ${urlMetadata.totalTextLength} characters
+  `;
+  const finalDescription = `${notebookLmDescription}\n\n==============\n\n${metadataDetailsStr}`;
+
+  return {
+    title: notebookLmDetails.title,
+    description: finalDescription,
+  };
 }
 
 function logError(url: string, err: unknown) {

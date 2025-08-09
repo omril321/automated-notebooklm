@@ -1,10 +1,13 @@
 import { NotebookLMService } from "./notebookLMService";
 import { initializeBrowser } from "./browserService";
-import { info, success } from "./logger";
-import { GeneratedPodcast, toGeneratedPodcast } from "./types";
+import { error, info, success } from "./logger";
+import { GeneratedPodcast } from "./types";
+import { extractMetadataFromUrl } from "./services/articleMetadataService";
+import { ArticleMetadata } from "./monday/types";
 
 export type PodcastResult = {
   details: GeneratedPodcast;
+  metadata: ArticleMetadata;
 };
 
 /**
@@ -37,16 +40,20 @@ export async function generatePodcastFromUrl(url: string): Promise<PodcastResult
     success("Podcast WAV file generated successfully from NotebookLM");
 
     info("Extracting podcast details...");
-    const { title, description } = await service.getPodcastDetails();
+    const [notebookLmDetails, metadata] = await Promise.all([service.getPodcastDetails(), extractMetadataFromUrl(url)]);
+
     const details: GeneratedPodcast = {
-      description,
+      metadata,
+      notebookLmDetails,
       sourceUrls: [url],
-      title,
       stage: "generated",
       wavPath,
     };
 
-    return { details };
+    return { details, metadata };
+  } catch (err) {
+    error(`Failed to generate podcast from URL ${url}: ${err}`);
+    throw err;
   } finally {
     await browser.close();
     info("Browser closed successfully");

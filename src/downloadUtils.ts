@@ -1,8 +1,7 @@
 import { Download } from "playwright";
 import { promises as fs } from "fs";
-import { join, basename } from "path";
+import { join } from "path";
 import { info } from "./logger";
-import { PodcastIntention, createPodcastIntention } from "./types";
 
 /**
  * Save download to temporary file for processing
@@ -49,27 +48,6 @@ export async function verifyWavDownload(wavPath: string): Promise<void> {
   }
 
   info(`Verified download as WAV file named: ${wavPath}`);
-}
-
-/**
- * Generate podcast metadata from filename (fallback when NotebookLM metadata is not available)
- * @param wavPath Original download filename
- * @returns Basic podcast intention with title and description
- */
-export function generateMetadataFromFilename(wavPath: string): PodcastIntention {
-  const fileName = basename(wavPath);
-  const baseTitle = fileName.replace(/\.(wav|mp3)$/i, "");
-
-  // Clean up the filename for title
-  const title = baseTitle.replace(/[-_]/g, " ").replace(/\s+/g, " ").trim();
-
-  const description = `Podcast episode: ${title}
-
-This episode was automatically generated using NotebookLM and processed through an automated podcast generation pipeline.
-
-Generated: ${new Date().toISOString()}`;
-
-  return createPodcastIntention("file://" + wavPath, title, description);
 }
 
 /**

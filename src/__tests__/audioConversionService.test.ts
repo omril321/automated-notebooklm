@@ -12,9 +12,21 @@ import {
 
 import { convertToMp3 } from "../audioConversionService";
 import { GeneratedPodcast } from "../types";
+import { ArticleMetadata } from "../monday/types";
 import path from "path";
 
 const TEST_FIXTURE_FILE = "real NLM's output_for test.wav";
+
+function createTestMetadata(title: string): ArticleMetadata {
+  return {
+    title,
+    description: "Test Description",
+    contentType: "Article",
+    isNonPodcastable: false,
+    codeContentPercentage: 0,
+    totalTextLength: 1000,
+  };
+}
 
 describe("audioConversionService", () => {
   beforeAll(async () => {
@@ -31,8 +43,11 @@ describe("audioConversionService", () => {
     it("should require a valid WAV file path", async () => {
       const podcast: GeneratedPodcast = {
         stage: "generated",
-        title: "Test Podcast",
-        description: "Test Description",
+        metadata: createTestMetadata("Test Podcast"),
+        notebookLmDetails: {
+          title: "Test Podcast",
+          description: "Test Description",
+        },
         sourceUrls: ["https://example.com"],
         wavPath: "nonexistent.wav",
       };
@@ -50,8 +65,11 @@ describe("audioConversionService", () => {
 
       const podcast: GeneratedPodcast = {
         stage: "generated",
-        title: "Test Podcast",
-        description: "Test Description",
+        metadata: createTestMetadata("Test Podcast"),
+        notebookLmDetails: {
+          title: "Test Podcast",
+          description: "Test Description",
+        },
         sourceUrls: ["https://example.com"],
         wavPath: inputPath,
       };
@@ -79,8 +97,11 @@ describe("audioConversionService", () => {
 
       const podcast: GeneratedPodcast = {
         stage: "generated",
-        title: "Custom Options Test",
-        description: "Test Description",
+        metadata: createTestMetadata("Custom Options Test"),
+        notebookLmDetails: {
+          title: "Custom Options Test",
+          description: "Test Description",
+        },
         sourceUrls: ["https://example.com"],
         wavPath: inputPath,
       };
@@ -96,7 +117,7 @@ describe("audioConversionService", () => {
 
       expect(result.mp3Path).toBe(outputPath);
       expect(result.stage).toBe("converted");
-      expect(result.title).toBe("Custom Options Test");
+      expect(result.metadata.title).toBe("Custom Options Test");
       expect(await validateFileExists(outputPath)).toBe(true);
     });
   });

@@ -10,7 +10,11 @@ import { ConvertedPodcast, UploadedPodcast, toUploadedPodcast } from "./types";
  * @param podcast Podcast metadata with MP3 file path
  * @returns Promise with uploaded podcast metadata
  */
-export async function uploadEpisode(podcast: ConvertedPodcast): Promise<UploadedPodcast> {
+export async function uploadEpisode(
+  podcast: ConvertedPodcast,
+  title: string,
+  description: string
+): Promise<UploadedPodcast> {
   validateConfiguration();
 
   if (!podcast.mp3Path) {
@@ -19,7 +23,7 @@ export async function uploadEpisode(podcast: ConvertedPodcast): Promise<Uploaded
 
   validateFile(podcast.mp3Path);
 
-  info(`Starting RedCircle upload for: ${podcast.title}`);
+  info(`Starting RedCircle upload for: ${title}`);
   info(`File path: ${path.resolve(podcast.mp3Path)}`);
 
   const { browser, page } = await initialize();
@@ -28,11 +32,11 @@ export async function uploadEpisode(podcast: ConvertedPodcast): Promise<Uploaded
     await loginToRedCircle(page);
     await selectPodcast(page);
     await createNewEpisode(page);
-    await fillEpisodeDetails(page, podcast);
+    await fillEpisodeDetails(page, title, description);
     await uploadAudioFile(page, podcast.mp3Path);
     await publishEpisode(page);
 
-    info(`✅ Successfully uploaded episode: ${podcast.title}`);
+    info(`✅ Successfully uploaded episode: ${title}`);
     info("Episode is now processing on RedCircle.");
 
     // Get the current URL from the browser (podcast page)
@@ -40,7 +44,7 @@ export async function uploadEpisode(podcast: ConvertedPodcast): Promise<Uploaded
     info(`📄 Podcast URL: ${podcastUrl}`);
 
     // Return metadata with updated upload status and URL
-    return toUploadedPodcast(podcast, podcastUrl);
+    return toUploadedPodcast(podcast, podcastUrl, title, description);
   } catch (err) {
     await handleUploadError(page, err);
     throw err;
@@ -106,12 +110,12 @@ async function createNewEpisode(page: Page): Promise<void> {
   await page.click('button:has-text("New Episode")');
 }
 
-async function fillEpisodeDetails(page: Page, podcast: ConvertedPodcast): Promise<void> {
-  info(`Setting episode title: ${podcast.title}`);
-  await page.fill('input[placeholder="Episode Title"]', podcast.title);
+async function fillEpisodeDetails(page: Page, title: string, description: string): Promise<void> {
+  info(`Setting episode title: ${title}`);
+  await page.fill('input[placeholder="Episode Title"]', title);
 
   info("Setting episode description...");
-  await page.fill('*[data-placeholder="Episode Description"]', podcast.description);
+  await page.fill('*[data-placeholder="Episode Description"]', description);
 }
 
 async function uploadAudioFile(page: Page, filePath: string): Promise<void> {

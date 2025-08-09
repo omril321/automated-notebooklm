@@ -19,6 +19,7 @@ export type ArticleCandidate = {
   readonly id: string;
   readonly name: string;
   readonly sourceUrl: `${"http"}${string}`;
+  readonly metadata: Partial<ArticleMetadata> | undefined;
 };
 
 export type ArticleMetadata = {

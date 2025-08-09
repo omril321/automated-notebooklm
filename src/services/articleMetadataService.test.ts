@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { extractMetadataFromUrl, extractMetadataBatch } from "./articleMetadataService";
 import * as contentAnalysisService from "./contentAnalysisService";
-import { ArticleAnalysis } from "../types";
+import { ArticleAnalysis } from "./articleMetadataService";
 import { ArticleMetadata } from "../monday/types";
 
 // Mock the logger
