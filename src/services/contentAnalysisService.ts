@@ -69,7 +69,10 @@ function detectVideoContent(mainContent: cheerio.Cheerio<any>): boolean {
  * @param $ Cheerio instance
  * @returns Title and description
  */
-function extractTitleAndDescription($: cheerio.CheerioAPI): { title: string; description: string | undefined } {
+function extractTitleAndDescription(
+  url: string,
+  $: cheerio.CheerioAPI
+): { title: string; description: string | undefined } {
   const seoTitle = getMetaContent($, [
     "meta[property='og:title']",
     "meta[name='twitter:title']",
@@ -82,7 +85,7 @@ function extractTitleAndDescription($: cheerio.CheerioAPI): { title: string; des
     "meta[name='description']",
   ])?.trim();
 
-  const title = seoTitle || $("title").text().trim();
+  const title = seoTitle || $("title").text().trim() || url;
 
   return { title, description: seoDescription };
 }
@@ -104,7 +107,7 @@ export async function analyzeArticleFromUrl(url: string): Promise<ArticleAnalysi
     const mainContent = findMainContent($);
     const { codeContentPercentage, totalLength } = calculateCodeMetrics(mainContent);
     const isVideoArticle = detectVideoContent(mainContent);
-    const { title, description } = extractTitleAndDescription($);
+    const { title, description } = extractTitleAndDescription(url, $);
 
     const result = {
       title,

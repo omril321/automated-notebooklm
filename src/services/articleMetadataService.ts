@@ -83,9 +83,15 @@ export function finalizePodcastDetails(
   urlMetadata: ArticleMetadata,
   notebookLmDetails: { title: string; description: string }
 ): { title: string; description: string } {
+  info(
+    `Finalizing podcast details for "${urlMetadata.title}" (Content Type: ${urlMetadata.contentType}, ` +
+      `Code Content Percentage: ${urlMetadata.codeContentPercentage}%, ` +
+      `Total Text Length: ${urlMetadata.totalTextLength}, ` +
+      `Is Non-Podcastable: ${urlMetadata.isNonPodcastable})`
+  );
   const { description: notebookLmDescription } = notebookLmDetails;
 
-  if (!urlMetadata.codeContentPercentage || !urlMetadata.totalTextLength) {
+  if (!Number.isFinite(urlMetadata.codeContentPercentage) || !Number.isFinite(urlMetadata.totalTextLength)) {
     const errMsg = `Code content percentage or total text length is not available for ${urlMetadata.title}. This indicates that something is wrong in the flow, perhaps some bug.`;
     error(errMsg);
     throw new Error(errMsg);

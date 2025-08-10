@@ -170,7 +170,7 @@ async function updateItemsWithUrlsInNames(): Promise<void> {
  */
 async function updateItemsWithMissingMetadata(): Promise<void> {
   const items = await getBoardItems();
-  const articleItems = items.filter((item) => item.type === ARTICLE_TYPE);
+  const articleItems = items.filter((item) => item.type === ARTICLE_TYPE || !item.type);
   if (!articleItems.length) {
     throw new Error(
       `No article items found - this probably means that the board is not configured correctly, or that the article type is different than ${ARTICLE_TYPE}`

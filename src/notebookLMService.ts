@@ -27,13 +27,16 @@ export class NotebookLMService {
     await this.page.waitForSelector('input[type="email"]', { timeout: 30000 });
 
     info("Entering email...");
-    await this.page.fill('input[type="email"]', config.googleEmail);
+    const emailInput = this.page.locator('input[type="email"]');
+    await emailInput.pressSequentially(config.googleEmail, { delay: 56 });
     await this.page.click("#identifierNext");
-
-    await this.page.waitForSelector('input[type="password"]', { timeout: 30000 });
+    await this.page.waitForTimeout(4000);
 
     info("Entering password...");
-    await this.page.fill('input[type="password"]', config.googlePassword);
+    const passwordInput = this.page.locator('input[type="password"]');
+    await passwordInput.waitFor({ state: "visible" });
+
+    await passwordInput.pressSequentially(config.googlePassword, { delay: 61 });
     await this.page.click("#passwordNext");
 
     info("Waiting for welcome message...");

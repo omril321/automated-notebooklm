@@ -8,7 +8,6 @@ temp/
 coverage/
 temp-output/
 
-auth.json
 .env
 .env.*
 # Ignore all .env files, but not .env.example

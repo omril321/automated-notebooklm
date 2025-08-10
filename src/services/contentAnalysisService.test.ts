@@ -139,6 +139,25 @@ describe("ContentAnalysisService", () => {
       expect(result.title).toBe("SEO Title");
     });
 
+    it("should use url as title if no title is found", async () => {
+      const mockHtml = `
+        <html>
+          <head>
+            <title>Page Title</title>
+          </head>
+          <body>
+            <p>Content</p>
+          </body>
+        </html>
+      `;
+
+      mockFetch(mockHtml);
+
+      const result = await analyzeArticleFromUrl("https://example.com/no-title");
+
+      expect(result.title).toBe("https://example.com/no-title");
+    });
+
     it("should throw error on fetch failure", async () => {
       mockFetchRejected(new Error("Network error"));
 
