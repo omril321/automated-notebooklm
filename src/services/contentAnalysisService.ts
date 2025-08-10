@@ -33,7 +33,7 @@ function findMainContent($: cheerio.CheerioAPI): cheerio.Cheerio<any> {
  */
 function calculateCodeMetrics(mainContent: cheerio.Cheerio<any>): {
   codeContentPercentage: number;
-  totalLength: number;
+  totalTextLength: number;
 } {
   const codeBlocks = mainContent.find("pre"); // Only <pre>, not inline <code>
   const codeText = codeBlocks.text();
@@ -43,12 +43,12 @@ function calculateCodeMetrics(mainContent: cheerio.Cheerio<any>): {
   const nonCodeText = mainContent.clone().find("pre").remove().end().text();
   const nonCodeLength = nonCodeText.length;
 
-  const totalLength = codeLength + nonCodeLength;
-  const codePercentage = totalLength > 0 ? codeLength / totalLength : 0;
+  const totalTextLength = codeLength + nonCodeLength;
+  const codePercentage = totalTextLength > 0 ? codeLength / totalTextLength : 0;
 
   return {
     codeContentPercentage: parseFloat((codePercentage * 100).toFixed(3)),
-    totalLength,
+    totalTextLength,
   };
 }
 
@@ -101,11 +101,14 @@ export async function analyzeArticleFromUrl(url: string): Promise<ArticleAnalysi
 
   try {
     const res = await fetch(url);
+    if (!res.ok) {
+      throw new Error(`Failed to fetch ${url}: ${res.status} ${res.statusText}`);
+    }
     const html = await res.text();
     const $ = cheerio.load(html);
 
     const mainContent = findMainContent($);
-    const { codeContentPercentage, totalLength } = calculateCodeMetrics(mainContent);
+    const { codeContentPercentage, totalTextLength } = calculateCodeMetrics(mainContent);
     const isVideoArticle = detectVideoContent(mainContent);
     const { title, description } = extractTitleAndDescription(url, $);
 
@@ -114,7 +117,7 @@ export async function analyzeArticleFromUrl(url: string): Promise<ArticleAnalysi
       description,
       codeContentPercentage,
       isVideoArticle,
-      totalTextLength: totalLength,
+      totalTextLength,
     };
 
     success(

@@ -1,7 +1,7 @@
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
 import { error } from "../logger";
-import { generateAndUpload, generateUsingMondayBoard } from "../generateAndUpload";
+import { generateAndUpload, generateAndUploadFromMondayBoardCandidates } from "../generateAndUpload";
 
 // Parse command line arguments
 const argv = yargs(hideBin(process.argv))
@@ -34,7 +34,7 @@ async function run() {
   const isMondayMode = argv["monday-mode"];
   try {
     if (isMondayMode) {
-      await generateUsingMondayBoard();
+      await generateAndUploadFromMondayBoardCandidates();
     } else {
       const url = argv.url!;
       await generateAndUpload(url);

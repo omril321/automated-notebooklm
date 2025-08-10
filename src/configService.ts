@@ -3,13 +3,13 @@ import { error } from "./logger";
 
 dotenv.config();
 
-export interface Config {
+export type Config = {
   googleEmail: string;
   googlePassword: string;
   redCircleUser?: string;
   redCirclePassword?: string;
   publishedPodcastName?: string;
-}
+};
 
 /**
  * Load and validate environment configuration
@@ -28,15 +28,16 @@ export function loadConfig(): Config {
 
   // Check for missing required variables
   const missingVars = [];
-  if (!googleEmail) missingVars.push("GOOGLE_USER_EMAIL");
-  if (!googlePassword) missingVars.push("GOOGLE_USER_PASSWORD");
+  if (!googleEmail?.trim()) missingVars.push("GOOGLE_USER_EMAIL");
+  if (!googlePassword?.trim()) missingVars.push("GOOGLE_USER_PASSWORD");
 
   // Only check for Google variables at config load time
   // RedCircle variables are checked separately when uploadEpisode is called
   if (missingVars.length > 0) {
-    error(`Missing required environment variables: ${missingVars.join(", ")}`);
+    const errorMessage = `Missing required environment variables: ${missingVars.join(", ")}`;
+    error(errorMessage);
     error("Please create a .env file with the required variables.");
-    throw new Error("Missing required environment variables");
+    throw new Error(errorMessage);
   }
 
   return {

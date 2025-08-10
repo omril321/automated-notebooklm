@@ -4,11 +4,14 @@ import { error, info, success } from "./logger";
 import { GeneratedPodcast } from "./types";
 import { extractMetadataFromUrl } from "./services/articleMetadataService";
 import { ArticleMetadata } from "./monday/types";
+import type { Browser, BrowserContext, Page } from "playwright";
 
 export type PodcastResult = {
   details: GeneratedPodcast;
   metadata: ArticleMetadata;
 };
+
+const DEFAULT_HEADLESS = false;
 
 /**
  * Generate podcast WAV file from URL using NotebookLM
@@ -16,9 +19,12 @@ export type PodcastResult = {
  * @returns Promise with podcast generation results
  */
 export async function generatePodcastFromUrl(url: string): Promise<PodcastResult> {
+  if (!url?.trim()) {
+    throw new Error("generatePodcastFromUrl: 'url' must be a non-empty string");
+  }
   info("Starting podcast generation from NotebookLM...");
 
-  const { browser, service } = await initialize();
+  const { browser, service } = await initializeNotebookLmAutomation();
 
   try {
     info("Logging into Google account...");
@@ -60,9 +66,14 @@ export async function generatePodcastFromUrl(url: string): Promise<PodcastResult
   }
 }
 
-async function initialize() {
+async function initializeNotebookLmAutomation(): Promise<{
+  browser: Browser;
+  context: BrowserContext;
+  page: Page;
+  service: NotebookLMService;
+}> {
   const { browser, context } = await initializeBrowser({
-    headless: false,
+    headless: DEFAULT_HEADLESS,
   });
 
   const page = await context.newPage();

@@ -1,15 +1,19 @@
-import { Browser, BrowserContext, chromium, LaunchOptions, BrowserContextOptions, Page } from "playwright";
+import { Browser, BrowserContext, chromium, LaunchOptions, BrowserContextOptions } from "playwright";
 import UserAgent from "user-agents";
 import { info } from "./logger";
 import * as path from "path";
 import { getProjectRoot } from "./utils";
 
+const DEFAULT_SLOW_MO_MS = 80;
+const DOWNLOADS_DIR_NAME = "downloads";
+const DEFAULT_LOCALE = "en-US";
+
 /**
  * Browser Service - Browser initialization service for NotebookLM automation
  */
-export interface BrowserOptions {
+export type BrowserOptions = {
   headless?: boolean;
-}
+};
 
 /**
  * Initialize and launch a browser with anti-detection settings
@@ -26,8 +30,8 @@ export async function initializeBrowser(options: BrowserOptions = {}): Promise<{
   const launchOptions: LaunchOptions = {
     headless,
     channel: "chrome", // Use installed Chrome browser
-    slowMo: 80,
-    downloadsPath: path.join(getProjectRoot(), "downloads"),
+    slowMo: DEFAULT_SLOW_MO_MS,
+    downloadsPath: path.join(getProjectRoot(), DOWNLOADS_DIR_NAME),
     args: [
       "--disable-blink-features=AutomationControlled",
       "--disable-infobars",
@@ -43,16 +47,16 @@ export async function initializeBrowser(options: BrowserOptions = {}): Promise<{
   const browser = await chromium.launch(launchOptions);
 
   // Generate a realistic user agent
-  const ua = new UserAgent({ deviceCategory: "desktop" }).toString();
-  info(`Using user agent: ${ua}`);
+  const userAgentString = new UserAgent({ deviceCategory: "desktop" }).toString();
+  info(`Using user agent: ${userAgentString}`);
 
   // Create context options
   const contextOptions: BrowserContextOptions = {
-    userAgent: ua,
+    userAgent: userAgentString,
     javaScriptEnabled: true,
     hasTouch: false,
     isMobile: false,
-    locale: "en-US",
+    locale: DEFAULT_LOCALE,
   };
 
   const context = await browser.newContext(contextOptions);

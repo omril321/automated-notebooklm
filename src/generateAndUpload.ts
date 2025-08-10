@@ -6,8 +6,9 @@ import { UploadedPodcast } from "./types";
 import { getPodcastCandidates, updateItemWithGeneratedPodcastUrl } from "./monday/service";
 import { finalizePodcastDetails } from "./services/articleMetadataService";
 
+const DEFAULT_DOWNLOADS_DIR = "./downloads";
+
 export type GenerateAndUploadOptions = {
-  skipUpload?: boolean;
   outputDir?: string;
 };
 
@@ -17,7 +18,11 @@ export type GenerateAndUploadOptions = {
  * @param options Flow options
  */
 export async function generateAndUpload(url: string, options: GenerateAndUploadOptions = {}): Promise<UploadedPodcast> {
-  const { outputDir = "./downloads" } = options;
+  if (!url?.trim()) {
+    throw new Error("generateAndUpload: 'url' must be a non-empty string");
+  }
+
+  const { outputDir = DEFAULT_DOWNLOADS_DIR } = options;
 
   info("Starting podcast generation and upload...");
 
@@ -25,7 +30,6 @@ export async function generateAndUpload(url: string, options: GenerateAndUploadO
   const { details: generatedDetails, metadata: generatedMetadata } = await generatePodcastFromUrl(url);
 
   info("Step 2: Converting to MP3...");
-  // Convert the WAV to MP3
   const convertedPodcast = await convertToMp3(generatedDetails, { outputDir });
 
   success(`MP3 conversion completed: ${convertedPodcast.mp3Path}`);
@@ -39,7 +43,7 @@ export async function generateAndUpload(url: string, options: GenerateAndUploadO
   return uploadedPodcast;
 }
 
-export async function generateUsingMondayBoard(): Promise<void> {
+export async function generateAndUploadFromMondayBoardCandidates(): Promise<void> {
   info("🔍 Fetching podcast candidates from Monday board...");
 
   const candidates = await getPodcastCandidates();
@@ -70,6 +74,7 @@ export async function generateUsingMondayBoard(): Promise<void> {
       await updateItemWithGeneratedPodcastUrl(candidate.id, podcastUrl);
       success(`✅ Successfully updated Monday board for: ${candidate.name} (id: ${candidate.id})`);
     } catch (candidateError) {
+      // Abort entire batch on first failure to avoid partial board updates
       error(`❌ Failed to process candidate ${candidate.id}: ${candidateError}`);
       throw candidateError;
     }

@@ -3,11 +3,19 @@ import { info, success } from "./logger";
 import { loadConfig } from "./configService";
 import { saveToTempFile } from "./downloadUtils";
 
+const TYPING_DELAY_EMAIL_MS = 56;
+const TYPING_DELAY_PASSWORD_MS = 61;
+const SELECTOR_TIMEOUT_MS = 30_000;
+const POST_SUBMIT_WAIT_MS = 4_000;
+const DOWNLOAD_START_WAIT_MS = 2_000;
+const TITLE_DESC_WAIT_MS = 10_000;
+const AUDIO_GENERATION_TIMEOUT_MS = 12 * 60 * 1000; // 12 minutes
+
 /**
  * Service for automating interactions with Google NotebookLM
  */
 export class NotebookLMService {
-  private page: Page;
+  private readonly page: Page;
   private readonly baseUrl = "https://notebooklm.google.com";
 
   /**
@@ -24,23 +32,22 @@ export class NotebookLMService {
     const config = loadConfig();
     await this.page.goto(this.baseUrl);
 
-    await this.page.waitForSelector('input[type="email"]', { timeout: 30000 });
+    await this.page.waitForSelector('input[type="email"]', { timeout: SELECTOR_TIMEOUT_MS });
 
     info("Entering email...");
     const emailInput = this.page.locator('input[type="email"]');
-    await emailInput.pressSequentially(config.googleEmail, { delay: 56 });
+    await emailInput.pressSequentially(config.googleEmail, { delay: TYPING_DELAY_EMAIL_MS });
     await this.page.click("#identifierNext");
-    await this.page.waitForTimeout(4000);
+    await this.page.waitForTimeout(POST_SUBMIT_WAIT_MS);
 
     info("Entering password...");
     const passwordInput = this.page.locator('input[type="password"]');
     await passwordInput.waitFor({ state: "visible" });
-
-    await passwordInput.pressSequentially(config.googlePassword, { delay: 61 });
+    await passwordInput.pressSequentially(config.googlePassword, { delay: TYPING_DELAY_PASSWORD_MS });
     await this.page.click("#passwordNext");
 
     info("Waiting for welcome message...");
-    await this.page.getByAltText("NotebookLM Logo", { exact: true }).waitFor({ timeout: 30000 });
+    await this.page.getByAltText("NotebookLM Logo", { exact: true }).waitFor({ timeout: SELECTOR_TIMEOUT_MS });
 
     success("Successfully logged in to Google account");
   }
@@ -57,15 +64,11 @@ export class NotebookLMService {
     const moreOptionsButton = this.page.locator(".artifact-button-content").locator("button", { hasText: "more_vert" });
     await moreOptionsButton.waitFor({ state: "visible" });
 
-    const timeToWaitForAudioGeneration = 12 * 60 * 1000; // 12 minutes
-    await moreOptionsButton.click({ timeout: timeToWaitForAudioGeneration });
+    await moreOptionsButton.click({ timeout: AUDIO_GENERATION_TIMEOUT_MS });
 
     // Wait for the download link to appear with a long timeout
     const downloadButton = this.page.getByText("Download", { exact: true });
-    await downloadButton.waitFor({
-      state: "visible",
-      timeout: 30000,
-    });
+    await downloadButton.waitFor({ state: "visible", timeout: SELECTOR_TIMEOUT_MS });
 
     let download: Download | null = null;
     this.page.once("download", (_download) => {
@@ -75,7 +78,7 @@ export class NotebookLMService {
     await downloadButton.click();
 
     // Brief wait for download to start
-    await this.page.waitForTimeout(2000);
+    await this.page.waitForTimeout(DOWNLOAD_START_WAIT_MS);
 
     success("Studio Podcast download initiated");
 
@@ -88,8 +91,6 @@ export class NotebookLMService {
 
   async createNewNotebook(): Promise<void> {
     info("Clicking on create new notebook...");
-
-    // Click on the create new notebook button
     const createButton = this.page.getByLabel("Create new notebook", { exact: true });
     await createButton.click();
     success("Clicked on create new notebook button");
@@ -97,8 +98,6 @@ export class NotebookLMService {
 
   async selectUrlResource(): Promise<void> {
     info("Selecting URL resource type...");
-
-    // Click on the Website option
     const websiteOption = this.page.getByText("Website", { exact: true });
     await websiteOption.click();
 
@@ -107,8 +106,6 @@ export class NotebookLMService {
 
   async addUrlResource(url: string): Promise<void> {
     info(`Adding URL resource: ${url}`);
-
-    // Find and fill the URL input field
     const urlInput = this.page.locator('*[formcontrolname="newUrl"]');
     await urlInput.fill(url);
 
@@ -166,10 +163,8 @@ export class NotebookLMService {
    */
   async extractPodcastTitle(): Promise<string> {
     info("Extracting podcast title from NotebookLM...");
-
-    // Get title from the notebook title element
     const titleElement = this.page.locator(".notebook-title");
-    await titleElement.waitFor({ state: "visible", timeout: 10000 });
+    await titleElement.waitFor({ state: "visible", timeout: TITLE_DESC_WAIT_MS });
 
     const title = (await titleElement.textContent()) || "Untitled Podcast";
     const cleanTitle = title.trim();
@@ -184,10 +179,8 @@ export class NotebookLMService {
    */
   async extractPodcastDescription(): Promise<string> {
     info("Extracting podcast description from NotebookLM...");
-
-    // Get description from the summary content element
     const descriptionElement = this.page.locator(".summary-content");
-    await descriptionElement.waitFor({ state: "visible", timeout: 10000 });
+    await descriptionElement.waitFor({ state: "visible", timeout: TITLE_DESC_WAIT_MS });
 
     const description = (await descriptionElement.textContent()) || "";
     const cleanDescription = description.trim();

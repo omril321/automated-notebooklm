@@ -4,7 +4,6 @@
   "description": "Automate Google NotebookLM for document summarization using Playwright",
   "main": "summarize.ts",
   "scripts": {
-    "generate-podcast-for-url": "ts-node src/scripts/generatePodcastForUrl.ts",
     "generate-podcasts": "ts-node src/scripts/generatePodcastForUrl.ts",
     "build": "tsc",
     "test": "vitest",
@@ -24,7 +23,7 @@
     "type": "git",
     "url": "git+https://github.com/omril321/automated-notebooklm.git"
   },
-  "license": "ISC",
+  "license": "Apache-2.0",
   "dependencies": {
     "@mondaydotcomorg/api": "^11.0.0",
     "@mondaydotcomorg/api-types": "^5.0.5",

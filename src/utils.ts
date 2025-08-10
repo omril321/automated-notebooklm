@@ -7,7 +7,10 @@ import * as fs from "fs";
  * @returns Path to the project root directory
  */
 export function getProjectRoot(startDir: string = process.cwd()): string {
-  // start from current dir, go up until finding a package.json file.
+  if (startDir === path.dirname(startDir)) {
+    throw new Error("package.json not found - reached filesystem root");
+  }
+
   const packageJsonPath = path.join(startDir, "package.json");
   if (fs.existsSync(packageJsonPath)) {
     return startDir;

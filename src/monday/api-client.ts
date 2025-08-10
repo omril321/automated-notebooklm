@@ -14,6 +14,9 @@ let apiClient: ApiClient | null = null;
 export const getMondayApiClient = (): ApiClient => {
   if (!apiClient) {
     const config = createConfigFromEnvironment();
+    if (!config.apiToken?.trim()) {
+      throw new Error("Monday API token is missing. Please set MONDAY_API_TOKEN.");
+    }
     apiClient = new ApiClient({ token: config.apiToken });
   }
   return apiClient;

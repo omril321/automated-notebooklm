@@ -3,6 +3,7 @@ import { initializeBrowser } from "./browserService";
 import { loadConfig } from "./configService";
 import { info, error } from "./logger";
 import * as path from "path";
+import { existsSync } from "fs";
 import { ConvertedPodcast, UploadedPodcast, toUploadedPodcast } from "./types";
 
 /**
@@ -26,7 +27,7 @@ export async function uploadEpisode(
   info(`Starting RedCircle upload for: ${title}`);
   info(`File path: ${path.resolve(podcast.mp3Path)}`);
 
-  const { browser, page } = await initialize();
+  const { browser, page } = await initializeRedCircleAutomation();
 
   try {
     await loginToRedCircle(page);
@@ -53,11 +54,14 @@ export async function uploadEpisode(
   }
 }
 
-async function initialize() {
+const DEFAULT_PAGE_TIMEOUT_MS = 30_000;
+const EPISODE_PROCESSING_TIMEOUT_MS = 60_000;
+
+async function initializeRedCircleAutomation() {
   const { browser, context } = await initializeBrowser();
 
   const page = await context.newPage();
-  page.setDefaultTimeout(30000);
+  page.setDefaultTimeout(DEFAULT_PAGE_TIMEOUT_MS);
 
   return { browser, context, page };
 }
@@ -73,7 +77,7 @@ function validateConfiguration(): void {
 }
 
 function validateFile(filePath: string): void {
-  if (!filePath || !require("fs").existsSync(filePath)) {
+  if (!filePath || !existsSync(filePath)) {
     throw new Error(`Audio file not found: ${filePath}`);
   }
 }
@@ -131,7 +135,7 @@ async function publishEpisode(page: Page): Promise<void> {
   await page.click('button:has-text("Publish")');
 
   info("Waiting for confirmation...");
-  await page.waitForSelector("text=Your episode is processing", { timeout: 60000 });
+  await page.waitForSelector("text=Your episode is processing", { timeout: EPISODE_PROCESSING_TIMEOUT_MS });
 }
 
 async function handleUploadError(page: Page, err: unknown): Promise<void> {

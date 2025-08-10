@@ -98,12 +98,8 @@ export function finalizePodcastDetails(
   }
 
   const metadataDetailsStr = `
-  Code content percentage: ${
-    Number.isFinite(urlMetadata.codeContentPercentage) ? `${urlMetadata.codeContentPercentage}%` : "N/A"
-  }
-  Total text length: ${
-    Number.isFinite(urlMetadata.totalTextLength) ? `${urlMetadata.totalTextLength} characters` : "N/A"
-  }
+  Code content percentage: ${urlMetadata.codeContentPercentage}%
+  Total text length: ${urlMetadata.totalTextLength} characters
   `;
   const finalDescription = `${notebookLmDescription}\n\n==============\n\n${metadataDetailsStr}`;
 

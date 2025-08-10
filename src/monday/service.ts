@@ -8,6 +8,15 @@ import { extractMetadataBatch } from "../services/articleMetadataService";
 import { processBatch } from "../utils/promiseUtils";
 import * as logger from "../logger";
 
+const safeJsonParse = <T>(value: unknown): T | undefined => {
+  if (typeof value !== "string" || !value.trim()) return undefined;
+  try {
+    return JSON.parse(value) as T;
+  } catch {
+    return undefined;
+  }
+};
+
 const ARTICLE_TYPE = "Article";
 const BATCH_SIZE = 10;
 const BATCH_DELAY_MS = 15000; // 15 seconds
@@ -16,21 +25,24 @@ const findCandidates = (items: SourceBoardItem[]): ArticleCandidate[] => {
   return (
     items
       .filter((item): item is SourceBoardItem => Boolean(item.podcastFitness > 0))
+      .filter((item): item is SourceBoardItem & { sourceUrlValue: { url: string } } => {
+        const url = item.sourceUrlValue?.url;
+        return Boolean(url && url.startsWith("http"));
+      })
       // sort descending - highest fitness first
       .sort((a, b) => b.podcastFitness - a.podcastFitness)
       .map((item) => ({
         id: item.id,
         name: item.name,
-        sourceUrl: item.sourceUrlValue?.url as `${"http"}${string}`,
-        metadata: item.metadata ? JSON.parse(item.metadata) : undefined,
+        sourceUrl: item.sourceUrlValue.url as `${"http"}${string}`,
+        metadata: item.metadata ? safeJsonParse<Record<string, unknown>>(item.metadata) : undefined,
       }))
   );
 };
 
-function parseSourceUrl(sourceUrlRaw: string): Pick<LinkValue, "url" | "text"> | undefined {
+function parseSourceUrl(sourceUrlRaw: string): LinkValue | undefined {
   try {
-    const sourceUrl = JSON.parse(sourceUrlRaw);
-    return sourceUrl;
+    return JSON.parse(sourceUrlRaw) as LinkValue;
   } catch (error) {
     return undefined;
   }
@@ -43,11 +55,8 @@ function parseBoardItems(items: GetBoardItemsOpQuery): SourceBoardItem[] {
 
   return items.boards[0].items_page.items.map((item) => {
     const rawSourceUrl = item.column_values.find((cv) => cv.id === REQUIRED_COLUMNS.sourceUrl.id)?.value;
-    const rawFittingForPodcast = item.column_values.find(
-      (cv) => cv.id === REQUIRED_COLUMNS.podcastFitness.id
-    ) as unknown as {
-      display_value: string;
-    };
+    const rawFittingForPodcast = item.column_values.find((cv) => cv.id === REQUIRED_COLUMNS.podcastFitness.id);
+    const fitnessDisplay = (rawFittingForPodcast as { display_value?: string } | undefined)?.display_value ?? "0";
     const rawMetadata = item.column_values.find((cv) => cv.id === REQUIRED_COLUMNS.metadata.id)?.value;
     const rawNonPodcastable = item.column_values.find((cv) => cv.id === REQUIRED_COLUMNS.nonPodcastable.id)?.value;
     const type = (item.column_values.find((cv) => cv.id === REQUIRED_COLUMNS.type.id) as undefined | { text: string })
@@ -59,9 +68,12 @@ function parseBoardItems(items: GetBoardItemsOpQuery): SourceBoardItem[] {
       id: item.id,
       name: item.name,
       sourceUrlValue,
-      podcastFitness: Number(rawFittingForPodcast.display_value),
+      podcastFitness: Number(fitnessDisplay),
       metadata: rawMetadata || null,
-      nonPodcastable: rawNonPodcastable ? JSON.parse(rawNonPodcastable).checked : null,
+      nonPodcastable: (() => {
+        const nonPodcastableObj = safeJsonParse<{ checked?: string }>(rawNonPodcastable);
+        return nonPodcastableObj?.checked ? nonPodcastableObj.checked === "true" : null;
+      })(),
       type,
     };
   });
@@ -70,14 +82,14 @@ function parseBoardItems(items: GetBoardItemsOpQuery): SourceBoardItem[] {
 /**
  * Update Monday board item with metadata and URL information
  */
-async function updateUrlNamedItemWithRealName(itemId: string, newName: string, url: string) {
+async function updateUrlNamedItemWithResolvedTitle(itemId: string, title: string, url: string) {
   const config = createConfigFromEnvironment();
   const apiClient = getMondayApiClient();
 
-  logger.info(`Updating item ${itemId} with extracted title: "${newName}"`);
+  logger.info(`Updating item ${itemId} with extracted title: "${title}"`);
 
   const columnValues = {
-    name: newName,
+    name: title,
     [REQUIRED_COLUMNS.sourceUrl.id]: { url, text: url },
   };
 
@@ -150,8 +162,8 @@ async function updateItemsWithUrlsInNames(): Promise<void> {
         logger.warning(`No metadata found for item ${item.id} with URL ${url}`);
         return;
       }
-      const newName = metadata.title;
-      await updateUrlNamedItemWithRealName(item.id, newName, url);
+      const { title } = metadata;
+      await updateUrlNamedItemWithResolvedTitle(item.id, title, url);
     },
     {
       batchSize: BATCH_SIZE,
