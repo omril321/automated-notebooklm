@@ -1,5 +1,5 @@
 import { Download, Page } from "playwright";
-import { info, success } from "./logger";
+import { error, info, success } from "./logger";
 import { loadConfig } from "./configService";
 import { saveToTempFile } from "./downloadUtils";
 
@@ -72,7 +72,11 @@ export class NotebookLMService {
 
     let download: Download | null = null;
     this.page.once("download", (_download) => {
-      _download.path().then((path) => success(`Downloaded file to ${path}`));
+      info(`Download event received: ${_download.url()}`);
+      _download
+        .path()
+        .then((path) => success(`Downloaded file to ${path}`))
+        .catch((err) => error(`Error getting download path: ${err}`));
       download = _download;
     });
     await downloadButton.click();
