@@ -8,6 +8,7 @@ const TYPING_DELAY_PASSWORD_MS = 61;
 const SELECTOR_TIMEOUT_MS = 30_000;
 const POST_SUBMIT_WAIT_MS = 4_000;
 const DOWNLOAD_START_WAIT_MS = 2_000;
+const AFTER_LOGIN_TIMEOUT = 300_000;
 const TITLE_DESC_WAIT_MS = 10_000;
 const AUDIO_GENERATION_TIMEOUT_MS = 12 * 60 * 1000; // 12 minutes
 
@@ -47,7 +48,7 @@ export class NotebookLMService {
     await this.page.click("#passwordNext");
 
     info("Waiting for welcome message...");
-    await this.page.getByAltText("NotebookLM Logo", { exact: true }).waitFor({ timeout: SELECTOR_TIMEOUT_MS });
+    await this.page.getByAltText("NotebookLM Logo", { exact: true }).waitFor({ timeout: AFTER_LOGIN_TIMEOUT }); // if captcha is shown, give time to fill manually
 
     success("Successfully logged in to Google account");
   }

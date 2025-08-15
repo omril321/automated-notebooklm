@@ -4,7 +4,7 @@
   "description": "Automate Google NotebookLM for document summarization using Playwright",
   "main": "summarize.ts",
   "scripts": {
-    "generate-podcasts": "ts-node src/scripts/generatePodcastForUrl.ts",
+    "generate-podcasts": "NODE_TLS_REJECT_UNAUTHORIZED=0 ts-node src/scripts/generatePodcastForUrl.ts",
     "build": "tsc",
     "test": "vitest",
     "test:run": "vitest run",
