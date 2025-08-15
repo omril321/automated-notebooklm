@@ -3,6 +3,7 @@ export type MondayConfig = {
   readonly apiToken: string;
   readonly boardUrl: string;
   readonly boardId: string;
+  readonly excludedGroups: readonly string[]; // Array of group IDs to exclude
 };
 
 export type SourceBoardItem = {

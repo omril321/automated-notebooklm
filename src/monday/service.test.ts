@@ -295,6 +295,7 @@ describe("Monday Service", () => {
         apiToken: "test-token",
         boardId: "test-board-id",
         boardUrl: "invalid-url",
+        excludedGroups: [],
       });
 
       expect(() => constructMondayItemUrl("123")).toThrow("Invalid board URL format");

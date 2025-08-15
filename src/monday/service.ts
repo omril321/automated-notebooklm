@@ -75,6 +75,7 @@ function parseBoardItems(items: GetBoardItemsOpQuery): SourceBoardItem[] {
         return nonPodcastableObj?.checked ? nonPodcastableObj.checked === "true" : null;
       })(),
       type,
+      group: (item as any).group ? { id: (item as any).group.id, title: (item as any).group.title } : null,
     };
   });
 }
@@ -245,16 +246,24 @@ async function getBoardItems(): Promise<SourceBoardItem[]> {
   await validateBoardAccess(config.boardId);
   const apiClient = getMondayApiClient();
 
-  logger.info(`Fetching board items from board ${config.boardId}`);
+  logger.info(
+    `Fetching board items from board ${config.boardId}, excluding group IDs: ${config.excludedGroups.join(", ")}`
+  );
 
   const LIMIT = 500;
   const query = `
   query GetBoardItems($boardId: [ID!]) {
     boards(ids: $boardId) {
-      items_page(limit: ${LIMIT}) {
+      items_page(limit: ${LIMIT}, query_params: {rules: [{column_id: "group", compare_value: ${JSON.stringify(
+    config.excludedGroups
+  )}, operator: not_any_of}]}) {
         items {
           id
           name
+          group {
+            id
+            title
+          }
           column_values {
             id
             value
@@ -272,13 +281,15 @@ async function getBoardItems(): Promise<SourceBoardItem[]> {
   const response = await apiClient.request<GetBoardItemsOpQuery>(query, { boardId: [config.boardId] });
 
   const items = parseBoardItems(response);
+
   if (items.length === LIMIT) {
     throw new Error(
-      `Retrieved ${items.length} items from Monday board, which is the limit of ${LIMIT} items. This means we need to implement pagination.
-Another options is to query only non-done items.`
+      `Retrieved ${items.length} items from Monday board, which is the limit of ${LIMIT} items. This means we need to implement pagination.`
     );
   }
-  logger.success(`Retrieved ${items.length} items from Monday board`);
+  logger.success(
+    `Retrieved ${items.length} items from Monday board (excluded group IDs: ${config.excludedGroups.join(", ")})`
+  );
 
   return items;
 }
