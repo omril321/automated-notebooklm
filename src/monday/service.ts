@@ -321,3 +321,17 @@ export async function updateItemWithGeneratedPodcastUrl(itemId: string, podcastU
 
   logger.success(`Updated item ${itemId} with podcast URL`);
 }
+
+/**
+ * Construct Monday.com item URL from board config and item ID
+ * @param itemId Monday board item ID
+ * @returns Complete URL to the Monday item
+ */
+export function constructMondayItemUrl(itemId: string): string {
+  const config = createConfigFromEnvironment();
+  const baseUrlMatch = config.boardUrl.match(/^(https?:\/\/[^/]+\/boards\/\d+)/);
+  if (!baseUrlMatch) {
+    throw new Error("Invalid board URL format");
+  }
+  return `${baseUrlMatch[1]}/pulses/${itemId}`;
+}

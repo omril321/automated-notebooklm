@@ -1,6 +1,7 @@
 import { ArticleMetadata } from "../monday/types";
 import { analyzeArticleFromUrl } from "./contentAnalysisService";
 import { info, success, warning, error } from "../logger";
+import { constructMondayItemUrl } from "../monday/service";
 
 export type ArticleAnalysis = {
   title: string;
@@ -79,9 +80,37 @@ export async function extractMetadataBatch(urls: string[]): Promise<Map<string, 
   return urlToMetadata;
 }
 
+/**
+ * Build links section for podcast description
+ * @param sourceUrl Original article URL
+ * @param mondayItemId Optional Monday board item ID
+ * @returns Formatted links section string
+ */
+function buildLinksSection(sourceUrl: string, mondayItemId?: string): string {
+  const links = [`🔗 Original article: ${sourceUrl}`];
+
+  if (mondayItemId) {
+    try {
+      const mondayItemUrl = constructMondayItemUrl(mondayItemId);
+      links.push(`📋 Monday item: ${mondayItemUrl}`);
+    } catch (err) {
+      // Silently handle Monday URL construction errors for graceful degradation
+      warning(
+        `Failed to construct Monday item URL for item ${mondayItemId}: ${
+          err instanceof Error ? err.message : String(err)
+        }`
+      );
+    }
+  }
+
+  return links.join("\n");
+}
+
 export function finalizePodcastDetails(
   urlMetadata: ArticleMetadata,
-  notebookLmDetails: { title: string; description: string }
+  notebookLmDetails: { title: string; description: string },
+  sourceUrl: string,
+  mondayItemId?: string
 ): { title: string; description: string } {
   info(
     `Finalizing podcast details for "${urlMetadata.title}" (Content Type: ${urlMetadata.contentType}, ` +
@@ -101,7 +130,9 @@ export function finalizePodcastDetails(
   Code content percentage: ${urlMetadata.codeContentPercentage}%
   Total text length: ${urlMetadata.totalTextLength} characters
   `;
-  const finalDescription = `${notebookLmDescription}\n\n==============\n\n${metadataDetailsStr}`;
+
+  const linksSection = buildLinksSection(sourceUrl, mondayItemId);
+  const finalDescription = `${notebookLmDescription}\n\n==============\n\n${metadataDetailsStr}\n${linksSection}`;
 
   return {
     title: notebookLmDetails.title,

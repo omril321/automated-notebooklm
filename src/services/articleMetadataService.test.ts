@@ -15,6 +15,11 @@ vi.mock("../logger", () => ({
 // Mock the content analysis service
 vi.mock("./contentAnalysisService");
 
+// Mock the Monday service
+vi.mock("../monday/service", () => ({
+  constructMondayItemUrl: vi.fn((itemId: string) => `https://omril321.monday.com/boards/3549832241/pulses/${itemId}`),
+}));
+
 // Test data factory functions
 const createMockAnalysis = (overrides: Partial<ArticleAnalysis> = {}): ArticleAnalysis => ({
   title: "Test Article",
@@ -115,7 +120,7 @@ describe("ArticleMetadataService", () => {
   });
 
   describe("finalizePodcastDetails", () => {
-    it("should compose description with numeric fields and percent", () => {
+    it("should compose description with numeric fields and source URL", () => {
       const metadata: ArticleMetadata = {
         title: "T",
         description: "D",
@@ -125,15 +130,81 @@ describe("ArticleMetadataService", () => {
         totalTextLength: 1234,
       };
 
-      const result = finalizePodcastDetails(metadata, {
-        title: "Notebook Title",
-        description: "Notebook Description",
-      });
+      const sourceUrl = "https://example.com/article";
+      const result = finalizePodcastDetails(
+        metadata,
+        {
+          title: "Notebook Title",
+          description: "Notebook Description",
+        },
+        sourceUrl
+      );
 
       expect(result.title).toBe("Notebook Title");
       expect(result.description).toContain("Notebook Description");
       expect(result.description).toContain("Code content percentage: 12.345%");
       expect(result.description).toContain("Total text length: 1234 characters");
+      expect(result.description).toContain("🔗 Original article: https://example.com/article");
+    });
+
+    it("should include Monday item link when mondayItemId is provided", () => {
+      const metadata: ArticleMetadata = {
+        title: "T",
+        description: "D",
+        contentType: "Article",
+        isNonPodcastable: false,
+        codeContentPercentage: 5.0,
+        totalTextLength: 1000,
+      };
+
+      const sourceUrl = "https://example.com/article";
+      const mondayItemId = "9783190631";
+      const result = finalizePodcastDetails(
+        metadata,
+        {
+          title: "Notebook Title",
+          description: "Notebook Description",
+        },
+        sourceUrl,
+        mondayItemId
+      );
+
+      expect(result.description).toContain("🔗 Original article: https://example.com/article");
+      expect(result.description).toContain(
+        "📋 Monday item: https://omril321.monday.com/boards/3549832241/pulses/9783190631"
+      );
+    });
+
+    it("should handle Monday URL construction errors gracefully", async () => {
+      // Mock the Monday service to throw an error
+      const { constructMondayItemUrl } = await import("../monday/service");
+      vi.mocked(constructMondayItemUrl).mockImplementationOnce(() => {
+        throw new Error("Invalid board URL format");
+      });
+
+      const metadata: ArticleMetadata = {
+        title: "T",
+        description: "D",
+        contentType: "Article",
+        isNonPodcastable: false,
+        codeContentPercentage: 5.0,
+        totalTextLength: 1000,
+      };
+
+      const sourceUrl = "https://example.com/article";
+      const mondayItemId = "9783190631";
+      const result = finalizePodcastDetails(
+        metadata,
+        {
+          title: "Notebook Title",
+          description: "Notebook Description",
+        },
+        sourceUrl,
+        mondayItemId
+      );
+
+      expect(result.description).toContain("🔗 Original article: https://example.com/article");
+      expect(result.description).not.toContain("📋 Monday item:");
     });
   });
 

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { getPodcastCandidates, updateItemWithGeneratedPodcastUrl } from "./service";
+import { getPodcastCandidates, updateItemWithGeneratedPodcastUrl, constructMondayItemUrl } from "./service";
 import * as logger from "../logger";
 
 // Mock the logger
@@ -44,6 +44,23 @@ vi.mock("./board-validator", () => ({
 
 vi.mock("../services/articleMetadataService", () => ({
   extractMetadataBatch: vi.fn().mockResolvedValue(new Map()),
+}));
+
+// Mock config to test URL construction
+vi.mock("./config", () => ({
+  createConfigFromEnvironment: vi.fn(() => ({
+    apiToken: "test-token",
+    boardId: "test-board-id",
+    boardUrl: "https://omril321.monday.com/boards/3549832241/views/206723838",
+  })),
+  REQUIRED_COLUMNS: {
+    sourceUrl: { id: "source_url" },
+    podcastFitness: { id: "podcast_fitness" },
+    metadata: { id: "metadata" },
+    nonPodcastable: { id: "non_podcastable" },
+    type: { id: "type" },
+    podcastLink: { id: "podcast_link" },
+  },
 }));
 
 describe("Monday Service", () => {
@@ -260,6 +277,27 @@ describe("Monday Service", () => {
 
       const { validateBoardAccess } = await import("./board-validator");
       expect(validateBoardAccess).toHaveBeenCalledWith("test-board-id");
+    });
+  });
+
+  describe("constructMondayItemUrl", () => {
+    it("should construct valid Monday item URL", () => {
+      const itemId = "9783190631";
+      const result = constructMondayItemUrl(itemId);
+
+      expect(result).toBe("https://omril321.monday.com/boards/3549832241/pulses/9783190631");
+    });
+
+    it("should throw error for invalid board URL format", async () => {
+      // Mock invalid config
+      const { createConfigFromEnvironment } = vi.mocked(await import("./config"));
+      createConfigFromEnvironment.mockReturnValueOnce({
+        apiToken: "test-token",
+        boardId: "test-board-id",
+        boardUrl: "invalid-url",
+      });
+
+      expect(() => constructMondayItemUrl("123")).toThrow("Invalid board URL format");
     });
   });
 });

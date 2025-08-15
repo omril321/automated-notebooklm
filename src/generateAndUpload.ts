@@ -10,6 +10,7 @@ const DEFAULT_DOWNLOADS_DIR = "./downloads";
 
 export type GenerateAndUploadOptions = {
   outputDir?: string;
+  mondayItemId?: string;
 };
 
 /**
@@ -22,7 +23,7 @@ export async function generateAndUpload(url: string, options: GenerateAndUploadO
     throw new Error("generateAndUpload: 'url' must be a non-empty string");
   }
 
-  const { outputDir = DEFAULT_DOWNLOADS_DIR } = options;
+  const { outputDir = DEFAULT_DOWNLOADS_DIR, mondayItemId } = options;
 
   info("Starting podcast generation and upload...");
 
@@ -34,7 +35,12 @@ export async function generateAndUpload(url: string, options: GenerateAndUploadO
 
   success(`MP3 conversion completed: ${convertedPodcast.mp3Path}`);
 
-  const { title, description } = finalizePodcastDetails(generatedMetadata, generatedDetails.notebookLmDetails);
+  const { title, description } = finalizePodcastDetails(
+    generatedMetadata,
+    generatedDetails.notebookLmDetails,
+    url,
+    mondayItemId
+  );
   info("Step 3: Uploading to hosting service...");
   const uploadedPodcast = await uploadEpisode(convertedPodcast, title, description);
 
@@ -66,7 +72,7 @@ export async function generateAndUploadFromMondayBoardCandidates(): Promise<void
     info(`🔗 Source URL: ${candidate.sourceUrl}`);
 
     try {
-      const { podcastUrl } = await generateAndUpload(candidate.sourceUrl);
+      const { podcastUrl } = await generateAndUpload(candidate.sourceUrl, { mondayItemId: candidate.id });
 
       info(`🎯 Generated podcast URL: ${podcastUrl}`);
       info(`📝 Updating Monday board for item ${candidate.id}...`);
