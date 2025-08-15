@@ -4,6 +4,7 @@ import { error, info, success } from "./logger";
 import { GeneratedPodcast } from "./types";
 import { extractMetadataFromUrl } from "./services/articleMetadataService";
 import { ArticleMetadata } from "./monday/types";
+import { audioGenerationTracker } from "./services/audioGenerationTrackingService";
 import type { Browser, BrowserContext, Page } from "playwright";
 
 export type PodcastResult = {
@@ -22,6 +23,10 @@ export async function generatePodcastFromUrl(url: string): Promise<PodcastResult
   if (!url?.trim()) {
     throw new Error("generatePodcastFromUrl: 'url' must be a non-empty string");
   }
+
+  // Validate rate limits before starting the process
+  await audioGenerationTracker.validateRateLimit();
+
   info("Starting podcast generation from NotebookLM...");
 
   const { browser, service } = await initializeNotebookLmAutomation();
@@ -39,6 +44,8 @@ export async function generatePodcastFromUrl(url: string): Promise<PodcastResult
 
     info("Generating studio podcast...");
     await service.generateStudioPodcast();
+
+    await audioGenerationTracker.recordAudioGeneration(url);
 
     info("Downloading generated podcast...");
     const wavPath = await service.downloadStudioPodcast();

@@ -7,6 +7,7 @@ downloads/
 temp/
 coverage/
 temp-output/
+logs/
 
 .env
 .env.*
