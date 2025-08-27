@@ -142,9 +142,7 @@ describe("ContentAnalysisService", () => {
     it("should use url as title if no title is found", async () => {
       const mockHtml = `
         <html>
-          <head>
-            <title>Page Title</title>
-          </head>
+          <head></head>
           <body>
             <p>Content</p>
           </body>
@@ -167,6 +165,9 @@ describe("ContentAnalysisService", () => {
 
   function mockFetch(html: string) {
     fetchSpy.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      statusText: "OK",
       text: () => Promise.resolve(html),
     } as Response);
   }

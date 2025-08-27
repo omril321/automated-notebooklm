@@ -1,6 +1,6 @@
 import { promises as fs } from "fs";
 import path from "path";
-import { error, info, success } from "../logger";
+import { info, success, warning } from "../logger";
 
 export type AudioGenerationEntry = {
   timestamp: string;
@@ -38,21 +38,23 @@ export class AudioGenerationTrackingService {
   }
 
   /**
-   * Validate rate limits before starting audio generation
-   * @throws AudioGenerationRateLimitError if rate limit is exceeded
+   * Check rate limits and return remaining available generation slots (0..3) in the last 24 hours.
+   * Does not throw on limit reached; logs and returns 0 instead.
    */
-  async validateRateLimit(): Promise<void> {
+  async validateRateLimit(): Promise<number> {
     info("Checking audio generation rate limits...");
 
     const log = await this.readLog();
     const recentEntries = this.getEntriesInLastWindow(log.entries);
+    const remaining = Math.max(0, RATE_LIMIT_COUNT - recentEntries.length);
 
-    if (recentEntries.length >= RATE_LIMIT_COUNT) {
-      error(`Rate limit exceeded: ${recentEntries.length} audio generations in the last 24 hours`);
-      throw new AudioGenerationRateLimitError(recentEntries.length, `24 hours`);
+    if (remaining === 0) {
+      warning(`Rate limit exceeded: ${recentEntries.length} audio generations in the last 24 hours`);
+      return 0;
     }
 
     success(`Rate limit check passed: ${recentEntries.length}/${RATE_LIMIT_COUNT} generations in the last 24 hours`);
+    return remaining;
   }
 
   /**

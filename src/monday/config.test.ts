@@ -10,6 +10,8 @@ describe("Monday.com Configuration Service", () => {
 
   beforeEach(() => {
     process.env = { ...originalEnv };
+    // Ensure required env var for success-path tests
+    process.env.MONDAY_EXCLUDED_GROUP_IDS = "group_done,group_archive";
   });
 
   afterEach(() => {
@@ -27,6 +29,7 @@ describe("Monday.com Configuration Service", () => {
         apiToken: "test-api-token",
         boardUrl: "https://company.monday.com/boards/123456789",
         boardId: "123456789",
+        excludedGroups: ["group_done", "group_archive"],
       });
     });
 
@@ -38,6 +41,7 @@ describe("Monday.com Configuration Service", () => {
 
       expect(config.boardId).toBe("3549832241");
       expect(config.boardUrl).toBe("https://omril321.monday.com/boards/3549832241/views/206723838");
+      expect(config.excludedGroups).toEqual(["group_done", "group_archive"]);
     });
 
     it("should support board URLs with other paths", () => {
@@ -47,6 +51,7 @@ describe("Monday.com Configuration Service", () => {
       const config = createConfigFromEnvironment();
 
       expect(config.boardId).toBe("987654321");
+      expect(config.excludedGroups).toEqual(["group_done", "group_archive"]);
     });
 
     it("should throw MondayError when MONDAY_API_TOKEN is missing", () => {

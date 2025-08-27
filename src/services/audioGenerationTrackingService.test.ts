@@ -47,17 +47,17 @@ describe("AudioGenerationTrackingService", () => {
   });
 
   describe("validateRateLimit", () => {
-    it("should pass when no previous entries exist", async () => {
+    it("should return 3 when no previous entries exist", async () => {
       // Mock empty log file
       vi.mocked(fs.readFile).mockRejectedValueOnce({ code: "ENOENT" });
 
-      await expect(service.validateRateLimit()).resolves.not.toThrow();
+      await expect(service.validateRateLimit()).resolves.toBe(3);
 
       expect(logger.info).toHaveBeenCalledWith("Checking audio generation rate limits...");
       expect(logger.success).toHaveBeenCalledWith("Rate limit check passed: 0/3 generations in the last 24 hours");
     });
 
-    it("should pass when entries are within rate limit", async () => {
+    it("should return remaining slots when entries are within rate limit", async () => {
       const mockLog = createMockLogData([
         { timestamp: createTimestamp(2), runId: "run-1", resourceUrl: "https://example.com/1" },
         { timestamp: createTimestamp(5), runId: "run-2", resourceUrl: "https://example.com/2" },
@@ -65,12 +65,12 @@ describe("AudioGenerationTrackingService", () => {
 
       vi.mocked(fs.readFile).mockResolvedValue(JSON.stringify(mockLog));
 
-      await expect(service.validateRateLimit()).resolves.not.toThrow();
+      await expect(service.validateRateLimit()).resolves.toBe(1);
 
       expect(logger.success).toHaveBeenCalledWith("Rate limit check passed: 2/3 generations in the last 24 hours");
     });
 
-    it("should throw error when rate limit is exceeded", async () => {
+    it("should return 0 and log warning when rate limit is exceeded", async () => {
       const mockLog = createMockLogData([
         { timestamp: createTimestamp(1), runId: "run-1", resourceUrl: "https://example.com/1" },
         { timestamp: createTimestamp(5), runId: "run-2", resourceUrl: "https://example.com/2" },
@@ -80,15 +80,8 @@ describe("AudioGenerationTrackingService", () => {
       const mockLogString = JSON.stringify(mockLog);
       vi.mocked(fs.readFile).mockResolvedValue(mockLogString);
 
-      await expect(service.validateRateLimit()).rejects.toThrow(AudioGenerationRateLimitError);
-
-      // Reset the mock for the second call
-      vi.mocked(fs.readFile).mockResolvedValue(mockLogString);
-      await expect(service.validateRateLimit()).rejects.toThrow(
-        "Rate limit exceeded: 3 audio generations in the last 24 hours. Please try again later."
-      );
-
-      expect(logger.error).toHaveBeenCalledWith("Rate limit exceeded: 3 audio generations in the last 24 hours");
+      await expect(service.validateRateLimit()).resolves.toBe(0);
+      expect(logger.warning).toHaveBeenCalledWith("Rate limit exceeded: 3 audio generations in the last 24 hours");
     });
 
     it("should ignore entries older than 24 hours", async () => {
@@ -100,8 +93,7 @@ describe("AudioGenerationTrackingService", () => {
 
       vi.mocked(fs.readFile).mockResolvedValue(JSON.stringify(mockLog));
 
-      await expect(service.validateRateLimit()).resolves.not.toThrow();
-
+      await expect(service.validateRateLimit()).resolves.toBe(2);
       expect(logger.success).toHaveBeenCalledWith("Rate limit check passed: 1/3 generations in the last 24 hours");
     });
   });
@@ -246,13 +238,13 @@ describe("AudioGenerationTrackingService", () => {
       vi.mocked(fs.access).mockRejectedValue(new Error("Directory doesn't exist"));
 
       // First validation should pass
-      await expect(service.validateRateLimit()).resolves.not.toThrow();
+      await expect(service.validateRateLimit()).resolves.toBe(3);
 
       // Record an entry
       await service.recordAudioGeneration("https://example.com");
 
-      // Second validation should still pass (1 < 3)
-      await expect(service.validateRateLimit()).resolves.not.toThrow();
+      // Second validation should still report remaining slots (1 < 3)
+      await expect(service.validateRateLimit()).resolves.toBe(2);
     });
   });
 });

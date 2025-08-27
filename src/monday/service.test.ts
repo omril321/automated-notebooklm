@@ -15,6 +15,8 @@ vi.mock("./config", () => ({
   createConfigFromEnvironment: () => ({
     apiToken: "test-token",
     boardId: "test-board-id",
+    boardUrl: "https://omril321.monday.com/boards/3549832241/views/206723838",
+    excludedGroups: [],
   }),
   REQUIRED_COLUMNS: {
     sourceUrl: { id: "source_url" },
@@ -52,6 +54,7 @@ vi.mock("./config", () => ({
     apiToken: "test-token",
     boardId: "test-board-id",
     boardUrl: "https://omril321.monday.com/boards/3549832241/views/206723838",
+    excludedGroups: [],
   })),
   REQUIRED_COLUMNS: {
     sourceUrl: { id: "source_url" },
