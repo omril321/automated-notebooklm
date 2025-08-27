@@ -1,6 +1,6 @@
-import { Browser, BrowserContext, chromium, LaunchOptions, BrowserContextOptions } from "playwright";
+import { Browser, BrowserContext, chromium, LaunchOptions, BrowserContextOptions, Page } from "playwright";
 import UserAgent from "user-agents";
-import { info } from "./logger";
+import { error, info } from "./logger";
 import * as path from "path";
 import { getProjectRoot } from "./utils";
 
@@ -89,4 +89,25 @@ async function addAntiDetectionScripts(context: BrowserContext): Promise<void> {
     // @ts-ignore - We need this ignore because we're modifying a browser API
     Object.defineProperty(navigator, "plugins", { get: () => [] });
   });
+}
+
+/**
+ * Capture a debug screenshot with timestamp for troubleshooting automation failures
+ * @param page - Playwright page instance
+ * @param prefix - Prefix for the screenshot filename
+ * @returns Promise that resolves to the screenshot path or null if failed
+ */
+export async function captureDebugScreenshot(page: Page, prefix: string): Promise<string | null> {
+  try {
+    const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+    const screenshotPath = `temp/${prefix}-error-${timestamp}.png`;
+
+    await page.screenshot({ path: screenshotPath, fullPage: true });
+    info(`Debug screenshot saved to: ${screenshotPath}`);
+
+    return screenshotPath;
+  } catch (screenshotError) {
+    error(`Failed to capture debug screenshot: ${screenshotError}`);
+    return null;
+  }
 }

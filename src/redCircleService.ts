@@ -92,8 +92,8 @@ async function loginToRedCircle(page: Page): Promise<void> {
   await page.click('a:has-text("Log in")');
 
   info("Entering login credentials...");
-  await page.fill('input[name="email"]', config.redCircleUser!);
-  await page.fill('input[name="password"]', config.redCirclePassword!);
+  await page.fill('input[type="email"]', config.redCircleUser!);
+  await page.fill('input[type="password"]', config.redCirclePassword!);
 
   info("Submitting login form...");
   await page.click('button[type="submit"]');

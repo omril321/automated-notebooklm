@@ -1,5 +1,5 @@
 import { NotebookLMService } from "./notebookLMService";
-import { initializeBrowser } from "./browserService";
+import { captureDebugScreenshot, initializeBrowser } from "./browserService";
 import { error, info, success } from "./logger";
 import { GeneratedPodcast } from "./types";
 import { extractMetadataFromUrl } from "./services/articleMetadataService";
@@ -29,7 +29,7 @@ export async function generatePodcastFromUrl(url: string): Promise<PodcastResult
 
   info("Starting podcast generation from NotebookLM...");
 
-  const { browser, service } = await initializeNotebookLmAutomation();
+  const { browser, page, service } = await initializeNotebookLmAutomation();
 
   try {
     info("Logging into Google account...");
@@ -65,6 +65,8 @@ export async function generatePodcastFromUrl(url: string): Promise<PodcastResult
 
     return { details, metadata };
   } catch (err) {
+    await captureDebugScreenshot(page, "podcast-generation");
+
     error(`Failed to generate podcast from URL ${url}: ${err}`);
     throw err;
   } finally {
