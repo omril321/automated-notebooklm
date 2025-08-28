@@ -12,7 +12,7 @@ export type SourceBoardItem = {
   readonly sourceUrlValue?: { url?: string | null; text?: string | null } | null;
   readonly type: "Article" | string | undefined;
   readonly podcastFitness: number;
-  readonly metadata?: string | null;
+  readonly metadata?: ArticleMetadata;
   readonly nonPodcastable?: boolean | null;
 };
 

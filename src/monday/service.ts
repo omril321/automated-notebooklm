@@ -1,21 +1,10 @@
 import { getMondayApiClient } from "./api-client";
 import { createConfigFromEnvironment, REQUIRED_COLUMNS } from "./config";
-import { MondayError, MondayErrorType } from "./errors";
 import { ArticleCandidate, SourceBoardItem, ArticleMetadata } from "./types";
-import { validateBoardAccess } from "./board-validator";
-import { GetBoardItemsOpQuery, LinkValue } from "@mondaydotcomorg/api";
 import { extractMetadataBatch } from "../services/articleMetadataService";
 import { processBatch } from "../utils/promiseUtils";
 import * as logger from "../logger";
-
-const safeJsonParse = <T>(value: unknown): T | undefined => {
-  if (typeof value !== "string" || !value.trim()) return undefined;
-  try {
-    return JSON.parse(value) as T;
-  } catch {
-    return undefined;
-  }
-};
+import { getBoardItems } from "./api";
 
 const ARTICLE_TYPE = "Article";
 const BATCH_SIZE = 10;
@@ -35,50 +24,10 @@ const findCandidates = (items: SourceBoardItem[]): ArticleCandidate[] => {
         id: item.id,
         name: item.name,
         sourceUrl: item.sourceUrlValue.url as `${"http"}${string}`,
-        metadata: item.metadata ? safeJsonParse<Record<string, unknown>>(item.metadata) : undefined,
+        metadata: item.metadata,
       }))
   );
 };
-
-function parseSourceUrl(sourceUrlRaw: string): LinkValue | undefined {
-  try {
-    return JSON.parse(sourceUrlRaw) as LinkValue;
-  } catch (error) {
-    return undefined;
-  }
-}
-
-function parseBoardItems(items: GetBoardItemsOpQuery): SourceBoardItem[] {
-  if (!items.boards?.[0]?.items_page?.items) {
-    throw new MondayError(MondayErrorType.API_ERROR, "Unexpected response from Monday API - no items found");
-  }
-
-  return items.boards[0].items_page.items.map((item) => {
-    const rawSourceUrl = item.column_values.find((cv) => cv.id === REQUIRED_COLUMNS.sourceUrl.id)?.value;
-    const rawFittingForPodcast = item.column_values.find((cv) => cv.id === REQUIRED_COLUMNS.podcastFitness.id);
-    const fitnessDisplay = (rawFittingForPodcast as { display_value?: string } | undefined)?.display_value ?? "0";
-    const rawMetadata = item.column_values.find((cv) => cv.id === REQUIRED_COLUMNS.metadata.id)?.value;
-    const rawNonPodcastable = item.column_values.find((cv) => cv.id === REQUIRED_COLUMNS.nonPodcastable.id)?.value;
-    const type = (item.column_values.find((cv) => cv.id === REQUIRED_COLUMNS.type.id) as undefined | { text: string })
-      ?.text;
-
-    const sourceUrlValue = parseSourceUrl(rawSourceUrl);
-
-    return {
-      id: item.id,
-      name: item.name,
-      sourceUrlValue,
-      podcastFitness: Number(fitnessDisplay),
-      metadata: rawMetadata || null,
-      nonPodcastable: (() => {
-        const nonPodcastableObj = safeJsonParse<{ checked?: string }>(rawNonPodcastable);
-        return nonPodcastableObj?.checked ? nonPodcastableObj.checked === "true" : null;
-      })(),
-      type,
-      group: (item as any).group ? { id: (item as any).group.id, title: (item as any).group.title } : null,
-    };
-  });
-}
 
 /**
  * Update Monday board item with metadata and URL information
@@ -134,7 +83,8 @@ async function updateItemWithMetadata(itemId: string, metadata: ArticleMetadata)
  * Uses batching to avoid hitting API concurrency limits.
  */
 async function updateItemsWithUrlsInNames(): Promise<void> {
-  const items = await getBoardItems();
+  const config = createConfigFromEnvironment();
+  const items = await getBoardItems({ boardId: config.boardId, excludedGroups: config.excludedGroups });
   const itemsWithUrlsInNames = items.filter((item) => {
     // names with spaces mean they are not "pure" links, so we skip them
     const isValidLinkOnly =
@@ -182,7 +132,8 @@ async function updateItemsWithUrlsInNames(): Promise<void> {
  * Uses batching to avoid hitting API concurrency limits.
  */
 async function updateItemsWithMissingMetadata(): Promise<void> {
-  const items = await getBoardItems();
+  const config = createConfigFromEnvironment();
+  const items = await getBoardItems({ boardId: config.boardId, excludedGroups: config.excludedGroups });
   const articleItems = items.filter((item) => item.type === ARTICLE_TYPE || !item.type);
   if (!articleItems.length) {
     throw new Error(
@@ -241,59 +192,6 @@ async function prepareBoardData(): Promise<void> {
   await updateItemsWithMissingMetadata();
 }
 
-async function getBoardItems(): Promise<SourceBoardItem[]> {
-  const config = createConfigFromEnvironment();
-  await validateBoardAccess(config.boardId);
-  const apiClient = getMondayApiClient();
-
-  logger.info(
-    `Fetching board items from board ${config.boardId}, excluding group IDs: ${config.excludedGroups.join(", ")}`
-  );
-
-  const LIMIT = 500;
-  const query = `
-  query GetBoardItems($boardId: [ID!]) {
-    boards(ids: $boardId) {
-      items_page(limit: ${LIMIT}, query_params: {rules: [{column_id: "group", compare_value: ${JSON.stringify(
-    config.excludedGroups
-  )}, operator: not_any_of}]}) {
-        items {
-          id
-          name
-          group {
-            id
-            title
-          }
-          column_values {
-            id
-            value
-            text
-            type
-            ... on FormulaValue {
-              display_value
-            }
-          }
-        }
-      }
-    }
-  }
-`;
-  const response = await apiClient.request<GetBoardItemsOpQuery>(query, { boardId: [config.boardId] });
-
-  const items = parseBoardItems(response);
-
-  if (items.length === LIMIT) {
-    throw new Error(
-      `Retrieved ${items.length} items from Monday board, which is the limit of ${LIMIT} items. This means we need to implement pagination.`
-    );
-  }
-  logger.success(
-    `Retrieved ${items.length} items from Monday board (excluded group IDs: ${config.excludedGroups.join(", ")})`
-  );
-
-  return items;
-}
-
 /**
  * Fetch podcast candidates from Monday board
  * @param maxItems Maximum number of candidates to fetch (default: 3)
@@ -301,7 +199,8 @@ async function getBoardItems(): Promise<SourceBoardItem[]> {
  */
 export async function getPodcastCandidates(maxItems: number = 3): Promise<ArticleCandidate[]> {
   await prepareBoardData();
-  const boardItems = await getBoardItems();
+  const config = createConfigFromEnvironment();
+  const boardItems = await getBoardItems({ boardId: config.boardId, excludedGroups: config.excludedGroups });
 
   const candidates = findCandidates(boardItems);
   const selectedCandidates = candidates.slice(0, maxItems);
@@ -320,7 +219,6 @@ export async function getPodcastCandidates(maxItems: number = 3): Promise<Articl
  */
 export async function updateItemWithGeneratedPodcastUrl(itemId: string, podcastUrl: string) {
   const config = createConfigFromEnvironment();
-  await validateBoardAccess(config.boardId);
   const apiClient = getMondayApiClient();
 
   await apiClient.operations.changeColumnValueOp({

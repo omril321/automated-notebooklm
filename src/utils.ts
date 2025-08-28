@@ -17,3 +17,12 @@ export function getProjectRoot(startDir: string = process.cwd()): string {
   }
   return getProjectRoot(path.resolve(startDir, ".."));
 }
+
+export const safeJsonParse = <T>(value: string | null | undefined): T | undefined => {
+  if (typeof value !== "string" || !value.trim()) return undefined;
+  try {
+    return JSON.parse(value) as T;
+  } catch {
+    return undefined;
+  }
+};

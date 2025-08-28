@@ -40,10 +40,6 @@ vi.mock("./api-client", () => ({
   getMondayApiClient: vi.fn(() => mockApiClient),
 }));
 
-vi.mock("./board-validator", () => ({
-  validateBoardAccess: vi.fn().mockResolvedValue(true),
-}));
-
 vi.mock("../services/articleMetadataService", () => ({
   extractMetadataBatch: vi.fn().mockResolvedValue(new Map()),
 }));
@@ -270,16 +266,6 @@ describe("Monday Service", () => {
       });
 
       expect(logger.success).toHaveBeenCalledWith(`Updated item ${itemId} with podcast URL`);
-    });
-
-    it("should validate board access before updating", async () => {
-      const itemId = "test-item-id";
-      const podcastUrl = "https://example.com/podcast.mp3";
-
-      await updateItemWithGeneratedPodcastUrl(itemId, podcastUrl);
-
-      const { validateBoardAccess } = await import("./board-validator");
-      expect(validateBoardAccess).toHaveBeenCalledWith("test-board-id");
     });
   });
 
