@@ -10,6 +10,11 @@ export const REQUIRED_COLUMNS = {
   podcastFitness: { title: "Podcast fitness", type: ColumnType.Formula, id: "formula_mkth15m8" },
   metadata: { title: "Metadata", type: ColumnType.LongText, id: "long_text_mktjet6j" },
   nonPodcastable: { title: "Non-podcastable", type: ColumnType.Checkbox, id: "boolean_mktjmap0" },
+  notebookLmWithGeneratedAudio: {
+    title: "NotebookLM with generated audio",
+    type: ColumnType.Link,
+    id: "link_mkv7tbhg",
+  },
 } as const;
 
 /**

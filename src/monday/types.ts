@@ -6,10 +6,13 @@ export type MondayConfig = {
   readonly excludedGroups: readonly string[]; // Array of group IDs to exclude
 };
 
+type OptionalLinkValue = { url?: string | null; text?: string | null } | null;
+
 export type SourceBoardItem = {
   readonly id: string;
   readonly name: string;
-  readonly sourceUrlValue?: { url?: string | null; text?: string | null } | null;
+  readonly sourceUrlValue?: OptionalLinkValue;
+  readonly generatedAudioLinkValue?: OptionalLinkValue;
   readonly type: "Article" | string | undefined;
   readonly podcastFitness: number;
   readonly metadata?: ArticleMetadata;
@@ -21,6 +24,7 @@ export type ArticleCandidate = {
   readonly name: string;
   readonly sourceUrl: `${"http"}${string}`;
   readonly metadata: Partial<ArticleMetadata> | undefined;
+  readonly generatedAudioLink?: string;
 };
 
 export type ArticleMetadata = {

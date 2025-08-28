@@ -16,7 +16,7 @@ const findCandidates = (items: SourceBoardItem[]): ArticleCandidate[] => {
       .filter((item): item is SourceBoardItem => Boolean(item.podcastFitness > 0))
       .filter((item): item is SourceBoardItem & { sourceUrlValue: { url: string } } => {
         const url = item.sourceUrlValue?.url;
-        return Boolean(url && url.startsWith("http"));
+        return Boolean(url?.startsWith("http"));
       })
       // sort descending - highest fitness first
       .sort((a, b) => b.podcastFitness - a.podcastFitness)
@@ -25,6 +25,7 @@ const findCandidates = (items: SourceBoardItem[]): ArticleCandidate[] => {
         name: item.name,
         sourceUrl: item.sourceUrlValue.url as `${"http"}${string}`,
         metadata: item.metadata,
+        generatedAudioLink: item.generatedAudioLinkValue?.url ?? undefined,
       }))
   );
 };
@@ -229,6 +230,27 @@ export async function updateItemWithGeneratedPodcastUrl(itemId: string, podcastU
   });
 
   logger.success(`Updated item ${itemId} with podcast URL`);
+}
+
+/**
+ * Update Monday board item with NotebookLM generated audio link
+ * @param itemId Monday board item ID
+ * @param url NotebookLM page URL to persist in link column
+ */
+export async function updateItemWithNotebookLmAudioLink(itemId: string, url: string): Promise<void> {
+  const config = createConfigFromEnvironment();
+  const apiClient = getMondayApiClient();
+
+  const columnId = REQUIRED_COLUMNS.notebookLmWithGeneratedAudio.id;
+
+  await apiClient.operations.changeColumnValueOp({
+    boardId: config.boardId,
+    itemId,
+    columnId,
+    value: JSON.stringify({ url, text: url }),
+  });
+
+  logger.success(`Updated item ${itemId} with NotebookLM generated audio link`);
 }
 
 /**

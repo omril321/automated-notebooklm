@@ -4,6 +4,26 @@ import { getMondayApiClient } from "./api-client";
 import { REQUIRED_COLUMNS } from "./config";
 import { ArticleMetadata, SourceBoardItem } from "./types";
 import { safeJsonParse } from "../utils";
+import { MondayError, MondayErrorType } from "./errors";
+
+type ColumnIdDescriptor = { id: string };
+type ColumnValue = { id: string; value?: string | null; text?: string | null } & Partial<{ display_value: string }>;
+
+const findColumn = (columnValues: ReadonlyArray<ColumnValue>, column: ColumnIdDescriptor): ColumnValue | undefined => {
+  return columnValues.find((cv) => cv.id === column.id);
+};
+
+const findColumnRawValue = (
+  columnValues: ReadonlyArray<ColumnValue>,
+  column: ColumnIdDescriptor
+): string | undefined => {
+  const match = findColumn(columnValues, column);
+  if (!match) {
+    throw new MondayError(MondayErrorType.API_ERROR, `Column ${column.id} not found in item`);
+  }
+  const { value } = match;
+  return typeof value === "string" && value.trim() ? value : undefined;
+};
 
 export async function getBoardItems({
   boardId,
@@ -66,19 +86,22 @@ function parseBoardItems(items: GetBoardItemsOpQuery): SourceBoardItem[] {
   }
 
   return items.boards[0].items_page.items.map((item) => {
-    const rawSourceUrl = item.column_values.find((cv) => cv.id === REQUIRED_COLUMNS.sourceUrl.id)?.value;
-    const rawFittingForPodcast = item.column_values.find((cv) => cv.id === REQUIRED_COLUMNS.podcastFitness.id);
-    const fitnessDisplay = (rawFittingForPodcast as { display_value?: string } | undefined)?.display_value ?? "0";
-    const rawMetadata = item.column_values.find((cv) => cv.id === REQUIRED_COLUMNS.metadata.id)?.value;
+    const columnValues = item.column_values as ReadonlyArray<ColumnValue>;
+
+    const podcastFitnessCol = findColumn(columnValues, REQUIRED_COLUMNS.podcastFitness);
+    const fitnessDisplay = podcastFitnessCol?.display_value ?? "0";
+
+    const rawMetadata = findColumnRawValue(columnValues, REQUIRED_COLUMNS.metadata);
     const metadata = safeJsonParse<ArticleMetadata>(rawMetadata);
-    const type = (item.column_values.find((cv) => cv.id === REQUIRED_COLUMNS.type.id) as undefined | { text: string })
-      ?.text;
-    const rawNonPodcastable = item.column_values.find((cv) => cv.id === REQUIRED_COLUMNS.nonPodcastable.id)?.value;
+
+    const rawNonPodcastable = findColumn(columnValues, REQUIRED_COLUMNS.nonPodcastable)?.value;
     const nonPodcastableObj = safeJsonParse<{ checked?: string }>(rawNonPodcastable);
     const nonPodcastable = nonPodcastableObj?.checked ? nonPodcastableObj.checked === "true" : null;
 
-    const sourceUrlValue = parseSourceUrl(rawSourceUrl);
+    const rawSourceUrl = findColumnRawValue(columnValues, REQUIRED_COLUMNS.sourceUrl);
+    const sourceUrlValue = parseSourceUrl(rawSourceUrl!);
 
+    const type = findColumn(columnValues, REQUIRED_COLUMNS.type)?.text ?? undefined;
     return {
       id: item.id,
       name: item.name,
