@@ -1,4 +1,4 @@
-import { Download, Page } from "playwright";
+import { Download, Page, expect } from "playwright/test";
 import { error, info, success } from "./logger";
 import { loadConfig } from "./configService";
 import { saveToTempFile } from "./downloadUtils";
@@ -43,12 +43,10 @@ export class NotebookLMService {
 
     info("Entering password...");
     const passwordInput = this.page.locator('input[type="password"]');
-    await passwordInput.waitFor({ state: "visible" });
+    await passwordInput.waitFor({ state: "visible", timeout: AFTER_LOGIN_TIMEOUT });
     await passwordInput.pressSequentially(config.googlePassword, { delay: TYPING_DELAY_PASSWORD_MS });
     await this.page.click("#passwordNext");
-
-    info("Waiting for welcome message...");
-    await this.page.getByAltText("NotebookLM Logo", { exact: true }).waitFor({ timeout: AFTER_LOGIN_TIMEOUT }); // if captcha is shown, give time to fill manually
+    await this.waitForWelcomeMessage();
 
     success("Successfully logged in to Google account");
   }
@@ -61,15 +59,17 @@ export class NotebookLMService {
     info("Downloading Studio Podcast...");
     info("Waiting for download button to become available (may take several minutes)...");
 
-    // Look for the more options menu button with a long timeout - it takes a while to appear
-    const moreOptionsButton = this.page.locator(".artifact-button-content").locator("button", { hasText: "more_vert" });
-    await moreOptionsButton.waitFor({ state: "visible" });
+    // it's not a class, it's a tag
+    const audioArtifactLine = this.page.locator("artifact-library-item").getByLabel("More");
 
-    await moreOptionsButton.click({ timeout: AUDIO_GENERATION_TIMEOUT_MS });
+    // wait a long timeout for the audio artifact line to appear, and within it - the "More" button
+    await expect(audioArtifactLine).toBeVisible({ timeout: AUDIO_GENERATION_TIMEOUT_MS });
+    await expect(audioArtifactLine).toBeEnabled({ timeout: AUDIO_GENERATION_TIMEOUT_MS });
 
-    // Wait for the download link to appear with a long timeout
+    await audioArtifactLine.click();
+
     const downloadButton = this.page.getByText("Download", { exact: true });
-    await downloadButton.waitFor({ state: "visible", timeout: SELECTOR_TIMEOUT_MS });
+    await expect(downloadButton).toBeVisible({ timeout: AUDIO_GENERATION_TIMEOUT_MS });
 
     let download: Download | null = null;
     this.page.once("download", (_download) => {
@@ -99,6 +99,21 @@ export class NotebookLMService {
     const createButton = this.page.getByLabel("Create new notebook", { exact: true });
     await createButton.click();
     success("Clicked on create new notebook button");
+  }
+
+  /**
+   * Open an existing NotebookLM page and wait until it's ready post-login.
+   */
+  async openExistingNotebook(url: string): Promise<void> {
+    info(`Opening existing NotebookLM page: ${url}`);
+    await this.page.goto(url);
+    await this.waitForWelcomeMessage();
+  }
+
+  private async waitForWelcomeMessage(): Promise<void> {
+    info("Waiting for welcome message...");
+    await this.page.getByAltText("NotebookLM Logo", { exact: true }).waitFor({ timeout: AFTER_LOGIN_TIMEOUT });
+    success("NotebookLM page is ready");
   }
 
   async selectUrlResource(): Promise<void> {
@@ -150,23 +165,38 @@ export class NotebookLMService {
   async generateStudioPodcast(): Promise<void> {
     info("Starting to generate Studio Podcast...");
 
-    const studioPanel = this.page.locator(".studio-panel");
-    const audioOverviewButton = studioPanel.getByRole("button", { name: "Audio Overview" });
-    await audioOverviewButton.waitFor({ state: "visible" });
+    // Audio Overview can appear in two locations:
+    // 1. As a styled button outside studio panel (with .audio-overview-button class)
+    // 2. As a clickable element inside studio panel (role="button" with Audio Overview text)
+    // Both trigger the same functionality, so we'll try either one
+    const audioOverviewButtonOutside = this.page.locator(".audio-overview-button");
+    const audioOverviewButtonInside = this.page
+      .locator(".studio-panel")
+      .getByRole("button")
+      .filter({ hasText: "Audio Overview" });
 
-    const customizationButton = audioOverviewButton.getByLabel("Open customization options");
-    await customizationButton.waitFor({ state: "visible" });
+    const audioOverviewButton = audioOverviewButtonOutside.or(audioOverviewButtonInside);
 
-    await audioOverviewButton.click();
+    // Wait for button to be both visible AND clickable (not just visible)
+    // The button can appear visually but take time to become interactive
+    const selectedButton = audioOverviewButton.first();
+
+    // Use Playwright's built-in expect assertions with auto-retry and waiting
+    // These replace manual waitFor calls and are more reliable
+    await expect(selectedButton).toBeVisible();
+    await expect(selectedButton).toBeEnabled({ timeout: SELECTOR_TIMEOUT_MS });
+
+    await selectedButton.click();
 
     success("Clicked on Audio Overview button");
+    await this.assertGenerationStarted();
   }
 
   /**
    * Extract podcast title from NotebookLM
    * @returns Promise with the extracted podcast title
    */
-  async extractPodcastTitle(): Promise<string> {
+  private async extractPodcastTitle(): Promise<string> {
     info("Extracting podcast title from NotebookLM...");
     const titleElement = this.page.locator(".notebook-title");
     await titleElement.waitFor({ state: "visible", timeout: TITLE_DESC_WAIT_MS });
@@ -182,7 +212,7 @@ export class NotebookLMService {
    * Extract podcast description from NotebookLM
    * @returns Promise with the extracted podcast description
    */
-  async extractPodcastDescription(): Promise<string> {
+  private async extractPodcastDescription(): Promise<string> {
     info("Extracting podcast description from NotebookLM...");
     const descriptionElement = this.page.locator(".summary-content");
     await descriptionElement.waitFor({ state: "visible", timeout: TITLE_DESC_WAIT_MS });
@@ -204,5 +234,16 @@ export class NotebookLMService {
     const [title, description] = await Promise.all([this.extractPodcastTitle(), this.extractPodcastDescription()]);
 
     return { title, description };
+  }
+
+  /**
+   * Assert that Studio Podcast generation has started by locating a visible element
+   * containing the text "generating audio overview..." (case-insensitive).
+   */
+  private async assertGenerationStarted(): Promise<void> {
+    info("Asserting Studio Podcast generation has started...");
+    const generatingText = this.page.getByText(/generating\s+audio\s+overview\.{3}/i);
+    await expect(generatingText).toBeVisible({ timeout: SELECTOR_TIMEOUT_MS });
+    success("Detected 'generating audio overview...' signal");
   }
 }
