@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach, Mocked, MockInstance } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach, MockInstance } from "vitest";
 import { analyzeArticleFromUrl } from "./contentAnalysisService";
 
 // Mock the logger
@@ -9,7 +9,31 @@ vi.mock("../logger", () => ({
   error: vi.fn(),
 }));
 
-describe("ContentAnalysisService", () => {
+// Mock parsers
+vi.mock("./htmlContentParser", () => ({
+  analyzeHtml: vi.fn(async (_url: string, _html: string) => ({
+    title: "HTML Title",
+    description: "Desc",
+    codeContentPercentage: 0,
+    isVideoArticle: false,
+    totalTextLength: 10,
+  })),
+}));
+
+vi.mock("./pdfContentParser", () => ({
+  analyzePdf: vi.fn(async (_url: string, _headers: Headers) => ({
+    title: "PDF Title",
+    description: undefined,
+    codeContentPercentage: 0,
+    isVideoArticle: false,
+    totalTextLength: 0,
+  })),
+}));
+
+import { analyzeHtml } from "./htmlContentParser";
+import { analyzePdf } from "./pdfContentParser";
+
+describe("ContentAnalysisService (delegator)", () => {
   let fetchSpy: MockInstance<typeof fetch>;
 
   beforeEach(() => {
@@ -21,155 +45,77 @@ describe("ContentAnalysisService", () => {
     fetchSpy.mockRestore();
   });
 
-  describe("analyzeArticleFromUrl", () => {
-    it("should analyze a basic article", async () => {
-      const mockHtml = `
-        <html>
-          <head>
-            <title>Test Article</title>
-            <meta name="description" content="Test description">
-          </head>
-          <body>
-            <article>
-              <h1>Test Article</h1>
-              <p>This is a test article with some content.</p>
-            </article>
-          </body>
-        </html>
-      `;
-      mockFetch(mockHtml);
+  it("delegates to HTML parser for text/html", async () => {
+    mockFetchHtml("<html><head><title>X</title></head><body>ok</body></html>");
 
-      const result = await analyzeArticleFromUrl("https://example.com/article");
+    const result = await analyzeArticleFromUrl("https://example.com/article");
 
-      expect(result).toEqual({
-        title: "Test Article",
-        description: "Test description",
-        codeContentPercentage: 0,
-        isVideoArticle: false,
-        totalTextLength: 96,
-      });
-    });
-
-    it("should detect video content", async () => {
-      const mockHtml = `
-        <html>
-          <head>
-            <title>Video Article</title>
-          </head>
-          <body>
-            <article>
-              <h1>Video Article</h1>
-              <iframe src="https://youtube.com/embed/123"></iframe>
-              <p>Watch the video to learn more.</p>
-            </article>
-          </body>
-        </html>
-      `;
-      mockFetch(mockHtml);
-
-      const result = await analyzeArticleFromUrl("https://example.com/video");
-
-      expect(result.isVideoArticle).toBe(true);
-    });
-
-    it("should calculate code percentage correctly", async () => {
-      const mockHtml = `
-        <html>
-          <head>
-            <title>Code Article</title>
-          </head>
-          <body>
-            <article>
-              <h1>Code Article</h1>
-              <p>Short text.</p>
-              <pre>function test() {
-  console.log("This is a long code block that should affect the percentage");
-  return true;
-}</pre>
-            </article>
-          </body>
-        </html>
-      `;
-      mockFetch(mockHtml);
-
-      const result = await analyzeArticleFromUrl("https://example.com/code");
-
-      expect(result.codeContentPercentage).toBeCloseTo(100 * (112 / 193), 3);
-      expect(result.totalTextLength).toBe(193);
-    });
-
-    it("should handle articles without main/article tags", async () => {
-      const mockHtml = `
-        <html>
-          <head>
-            <title>Basic Article</title>
-          </head>
-          <body>
-            <h1>Basic Article</h1>
-            <p>Content in body tag.</p>
-          </body>
-        </html>
-      `;
-
-      mockFetch(mockHtml);
-
-      const result = await analyzeArticleFromUrl("https://example.com/basic");
-
-      expect(result.title).toBe("Basic Article");
-      expect(result.totalTextLength).toBe(86);
-    });
-
-    it("should prefer SEO title over page title", async () => {
-      const mockHtml = `
-        <html>
-          <head>
-            <title>Page Title</title>
-            <meta property="og:title" content="SEO Title">
-          </head>
-          <body>
-            <p>Content</p>
-          </body>
-        </html>
-      `;
-
-      mockFetch(mockHtml);
-
-      const result = await analyzeArticleFromUrl("https://example.com/seo");
-
-      expect(result.title).toBe("SEO Title");
-    });
-
-    it("should use url as title if no title is found", async () => {
-      const mockHtml = `
-        <html>
-          <head></head>
-          <body>
-            <p>Content</p>
-          </body>
-        </html>
-      `;
-
-      mockFetch(mockHtml);
-
-      const result = await analyzeArticleFromUrl("https://example.com/no-title");
-
-      expect(result.title).toBe("https://example.com/no-title");
-    });
-
-    it("should throw error on fetch failure", async () => {
-      mockFetchRejected(new Error("Network error"));
-
-      await expect(analyzeArticleFromUrl("https://example.com/fail")).rejects.toThrow("Network error");
-    });
+    expect(analyzeHtml).toHaveBeenCalledTimes(1);
+    expect(analyzePdf).not.toHaveBeenCalled();
+    expect(result.title).toBe("HTML Title");
   });
 
-  function mockFetch(html: string) {
+  it("delegates to PDF parser for application/pdf by content-type", async () => {
+    mockFetchPdf({ contentDisposition: 'attachment; filename="x.pdf"' });
+
+    const result = await analyzeArticleFromUrl("https://example.com/x");
+
+    expect(analyzePdf).toHaveBeenCalledTimes(1);
+    expect(analyzeHtml).not.toHaveBeenCalled();
+    expect(result.title).toBe("PDF Title");
+  });
+
+  it("delegates to PDF parser for .pdf URL even without content-type", async () => {
+    mockFetchUnknown();
+
+    const result = await analyzeArticleFromUrl("https://example.com/file.pdf");
+
+    expect(analyzePdf).toHaveBeenCalledTimes(1);
+    expect(analyzeHtml).not.toHaveBeenCalled();
+    expect(result.title).toBe("PDF Title");
+  });
+
+  it("throws on fetch failure", async () => {
+    mockFetchRejected(new Error("Network error"));
+
+    await expect(analyzeArticleFromUrl("https://example.com/fail")).rejects.toThrow("Network error");
+  });
+
+  function mockFetchHtml(html: string) {
     fetchSpy.mockResolvedValueOnce({
       ok: true,
       status: 200,
       statusText: "OK",
+      headers: { get: (name: string) => (name.toLowerCase() === "content-type" ? "text/html" : null) },
       text: () => Promise.resolve(html),
-    } as Response);
+    } as any);
+  }
+
+  function mockFetchPdf({ contentDisposition }: { contentDisposition: string }) {
+    fetchSpy.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      statusText: "OK",
+      headers: {
+        get: (name: string) =>
+          name.toLowerCase() === "content-type"
+            ? "application/pdf"
+            : name.toLowerCase() === "content-disposition"
+            ? contentDisposition
+            : null,
+      },
+      text: () => Promise.resolve(""),
+    } as any);
+  }
+
+  function mockFetchUnknown() {
+    fetchSpy.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      statusText: "OK",
+      headers: { get: (_: string) => null },
+      text: () => Promise.resolve(""),
+    } as any);
   }
 
   function mockFetchRejected(error: Error) {

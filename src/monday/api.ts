@@ -113,7 +113,6 @@ function parseBoardItems(items: GetBoardItemsOpQuery): SourceBoardItem[] {
       metadata,
       nonPodcastable,
       type,
-      group: (item as any).group ? { id: (item as any).group.id, title: (item as any).group.title } : null,
       generatedAudioLink,
     };
   });
