@@ -101,6 +101,9 @@ function parseBoardItems(items: GetBoardItemsOpQuery): SourceBoardItem[] {
     const rawSourceUrl = findColumnRawValue(columnValues, REQUIRED_COLUMNS.sourceUrl);
     const sourceUrlValue = parseSourceUrl(rawSourceUrl!);
 
+    const generatedAudioCol = findColumn(columnValues, REQUIRED_COLUMNS.notebookLmWithGeneratedAudio);
+    const generatedAudioLink = generatedAudioCol?.value ? parseSourceUrl(generatedAudioCol.value) : undefined;
+
     const type = findColumn(columnValues, REQUIRED_COLUMNS.type)?.text ?? undefined;
     return {
       id: item.id,
@@ -111,6 +114,7 @@ function parseBoardItems(items: GetBoardItemsOpQuery): SourceBoardItem[] {
       nonPodcastable,
       type,
       group: (item as any).group ? { id: (item as any).group.id, title: (item as any).group.title } : null,
+      generatedAudioLink,
     };
   });
 }

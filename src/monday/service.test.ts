@@ -25,6 +25,7 @@ vi.mock("./config", () => ({
     nonPodcastable: { id: "non_podcastable" },
     type: { id: "type" },
     podcastLink: { id: "podcast_link" },
+    notebookLmWithGeneratedAudio: { id: "nlm_audio" },
   },
 }));
 
@@ -59,6 +60,7 @@ vi.mock("./config", () => ({
     nonPodcastable: { id: "non_podcastable" },
     type: { id: "type" },
     podcastLink: { id: "podcast_link" },
+    notebookLmWithGeneratedAudio: { id: "nlm_audio" },
   },
 }));
 
@@ -86,6 +88,7 @@ describe("Monday Service", () => {
                     value: '{"title": "Default", "contentType": "Article", "isNonPodcastable": false}',
                   },
                   { id: "non_podcastable", value: null },
+                  { id: "nlm_audio", value: null },
                 ],
               },
             ],
@@ -119,6 +122,7 @@ describe("Monday Service", () => {
                       value: '{"title": "Article 1", "contentType": "Article", "isNonPodcastable": false}',
                     },
                     { id: "non_podcastable", value: null },
+                    { id: "nlm_audio", value: null },
                   ],
                 },
               ],
@@ -152,6 +156,7 @@ describe("Monday Service", () => {
                       value: '{"title": "Article 1", "contentType": "Article", "isNonPodcastable": false}',
                     },
                     { id: "non_podcastable", value: null },
+                    { id: "nlm_audio", value: null },
                   ],
                 },
                 {
@@ -167,6 +172,7 @@ describe("Monday Service", () => {
                         '{"title": "Article 2", "contentType": "Article", "isNonPodcastable": false, "codeContentPercentage": 10, "totalTextLength": 1000}',
                     },
                     { id: "non_podcastable", value: null },
+                    { id: "nlm_audio", value: null },
                   ],
                 },
               ],
@@ -218,6 +224,7 @@ describe("Monday Service", () => {
                     { id: "type", text: "Article" }, // Needs to be Article type
                     { id: "metadata", value: null },
                     { id: "non_podcastable", value: null },
+                    { id: "nlm_audio", value: null },
                   ],
                 },
               ],

@@ -7,7 +7,7 @@ const TYPING_DELAY_EMAIL_MS = 56;
 const TYPING_DELAY_PASSWORD_MS = 61;
 const SELECTOR_TIMEOUT_MS = 30_000;
 const POST_SUBMIT_WAIT_MS = 4_000;
-const DOWNLOAD_START_WAIT_MS = 2_000;
+const DOWNLOAD_START_WAIT_MS = 10_000;
 const AFTER_LOGIN_TIMEOUT = 300_000;
 const TITLE_DESC_WAIT_MS = 10_000;
 const AUDIO_GENERATION_TIMEOUT_MS = 12 * 60 * 1000; // 12 minutes
@@ -162,7 +162,12 @@ export class NotebookLMService {
     success(`Language set to ${language}`);
   }
 
-  async generateStudioPodcast(): Promise<void> {
+  /**
+   * Triggers Studio Podcast generation and returns the current NotebookLM page URL
+   * after generation has started. The caller is responsible for persisting this URL
+   * externally (e.g., to Monday via updateItemWithNotebookLmAudioLink).
+   */
+  async generateStudioPodcast(): Promise<string> {
     info("Starting to generate Studio Podcast...");
 
     // Audio Overview can appear in two locations:
@@ -190,6 +195,8 @@ export class NotebookLMService {
 
     success("Clicked on Audio Overview button");
     await this.assertGenerationStarted();
+    // Return the current NotebookLM page URL so the caller can persist it externally
+    return this.page.url();
   }
 
   /**

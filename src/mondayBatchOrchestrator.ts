@@ -1,55 +1,14 @@
-import { generatePodcastFromExistingNotebook, generatePodcastFromUrl } from "./podcastGeneration";
+import { generatePodcastFromExistingNotebook, generatePodcastFromUrl } from "./singleRunGeneration";
 import { convertToMp3 } from "./audioConversionService";
 import { uploadEpisode } from "./redCircleService";
 import { error, info, success } from "./logger";
-import { GeneratedPodcast, UploadedPodcast } from "./types";
+import { GeneratedPodcast } from "./types";
 import { getPodcastCandidates, updateItemWithGeneratedPodcastUrl } from "./monday/service";
 import { audioGenerationTracker } from "./services/audioGenerationTrackingService";
 import { finalizePodcastDetails } from "./services/articleMetadataService";
 import { ArticleCandidate } from "./monday/types";
 
 const DEFAULT_DOWNLOADS_DIR = "./downloads";
-
-export type GenerateAndUploadOptions = {
-  outputDir?: string;
-  mondayItemId?: string;
-};
-
-/**
- * Generate podcast from URL, convert to MP3, and upload
- * @param url Source URL to generate podcast from
- * @param options Flow options
- */
-export async function generateAndUpload(url: string, options: GenerateAndUploadOptions = {}): Promise<UploadedPodcast> {
-  if (!url?.trim()) {
-    throw new Error("generateAndUpload: 'url' must be a non-empty string");
-  }
-
-  const { outputDir = DEFAULT_DOWNLOADS_DIR, mondayItemId } = options;
-
-  info("Starting podcast generation and upload...");
-
-  info("Step 1: Generating podcast...");
-  const { details: generatedDetails, metadata: generatedMetadata } = await generatePodcastFromUrl(url);
-
-  info("Step 2: Converting to MP3...");
-  const convertedPodcast = await convertToMp3(generatedDetails, { outputDir });
-
-  success(`MP3 conversion completed: ${convertedPodcast.mp3Path}`);
-
-  const { title, description } = finalizePodcastDetails(
-    generatedMetadata,
-    generatedDetails.notebookLmDetails,
-    url,
-    mondayItemId
-  );
-  info("Step 3: Uploading to hosting service...");
-  const uploadedPodcast = await uploadEpisode(convertedPodcast, title, description);
-
-  success(`Episode "${uploadedPodcast.finalTitle}" uploaded successfully!`);
-
-  return uploadedPodcast;
-}
 
 type CandidateProcessingError = { id: string; name: string; reason: unknown };
 
@@ -62,7 +21,7 @@ function partitionCandidates(candidates: ArticleCandidate[]): {
   return { audioReady, regular };
 }
 
-async function processCandidates(
+async function runForCandidates(
   candidates: ArticleCandidate[],
   generateForCandidate: (candidate: ArticleCandidate) => Promise<GeneratedPodcast>
 ): Promise<{ processedCount: number; errors: CandidateProcessingError[] }> {
@@ -70,11 +29,6 @@ async function processCandidates(
   let processedCount = 0;
 
   for (const candidate of candidates) {
-    if (!candidate.sourceUrl) {
-      error(`❌ Skipping candidate ${candidate.id}: No source URL found`);
-      continue;
-    }
-
     try {
       const details = await generateForCandidate(candidate);
       const podcastUrl = await uploadAndUpdateMondayItem(details, candidate);
@@ -99,9 +53,20 @@ function summarizeAndMaybeThrow(errors: CandidateProcessingError[]): void {
 async function processAudioReady(
   audioReadyCandidates: ArticleCandidate[]
 ): Promise<{ processedCount: number; errors: CandidateProcessingError[] }> {
-  return processCandidates(audioReadyCandidates, async (candidate) => {
+  return runForCandidates(audioReadyCandidates, async (candidate) => {
     const notebookUrl = candidate.generatedAudioLink!;
-    const { details } = await generatePodcastFromExistingNotebook(notebookUrl, candidate.sourceUrl);
+    const { details } = await generatePodcastFromExistingNotebook(notebookUrl, candidate.sourceUrl, candidate.id);
+    return details;
+  });
+}
+
+async function processRegular(
+  regularCandidates: ArticleCandidate[],
+  remainingSlots: number
+): Promise<{ processedCount: number; errors: CandidateProcessingError[] }> {
+  const regularToProcess = remainingSlots > 0 ? regularCandidates.slice(0, remainingSlots) : [];
+  return runForCandidates(regularToProcess, async (candidate) => {
+    const { details } = await generatePodcastFromUrl(candidate.sourceUrl, candidate.id);
     return details;
   });
 }
@@ -138,11 +103,7 @@ export async function generateAndUploadFromMondayBoardCandidates(): Promise<void
   const { processedCount: audioReadyProcessed, errors: audioReadyErrors } = await processAudioReady(audioReady);
 
   const remainingSlots = await audioGenerationTracker.validateRateLimit();
-  const regularToProcess = remainingSlots > 0 ? regular.slice(0, remainingSlots) : [];
-  const { processedCount, errors } = await processCandidates(regularToProcess, async (candidate) => {
-    const { details } = await generatePodcastFromUrl(candidate.sourceUrl);
-    return details;
-  });
+  const { processedCount, errors } = await processRegular(regular, remainingSlots);
   summarizeAndMaybeThrow([...audioReadyErrors, ...errors]);
 
   success(`🎉 Completed processing ${audioReadyProcessed} audio-ready and ${processedCount} regular candidates.`);

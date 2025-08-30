@@ -46,6 +46,7 @@ PUBLISHED_PODCAST_NAME=
 # Optional: Monday.com integration
 MONDAY_API_TOKEN=
 MONDAY_BOARD_URL=
+MONDAY_EXCLUDED_GROUP_IDS=
 ```
 
 ## Contributing & Discussions
@@ -66,12 +67,6 @@ yarn generate-podcasts
 ```
 
 - By default, processes Monday board candidates (fitness > 0, unpublished only), sorts by fitness desc, and takes top 3 (NotebookLM daily limit). Fails fast on errors.
-
-### Generate a single podcast for a specific URL
-
-```bash
-yarn generate-podcasts --url "https://example.com/article"
-```
 
 ## Architecture
 

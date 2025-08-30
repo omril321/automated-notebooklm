@@ -10,24 +10,23 @@ const ARTICLE_TYPE = "Article";
 const BATCH_SIZE = 10;
 const BATCH_DELAY_MS = 15000; // 15 seconds
 
+const toArticleCandidate = (item: SourceBoardItem): ArticleCandidate => ({
+  id: item.id,
+  name: item.name,
+  sourceUrl: item.sourceUrlValue!.url as `${"http"}${string}`,
+  metadata: item.metadata,
+  generatedAudioLink: item.generatedAudioLink?.url ?? undefined,
+});
+
 const findCandidates = (items: SourceBoardItem[]): ArticleCandidate[] => {
-  return (
-    items
-      .filter((item): item is SourceBoardItem => Boolean(item.podcastFitness > 0))
-      .filter((item): item is SourceBoardItem & { sourceUrlValue: { url: string } } => {
-        const url = item.sourceUrlValue?.url;
-        return Boolean(url?.startsWith("http"));
-      })
-      // sort descending - highest fitness first
-      .sort((a, b) => b.podcastFitness - a.podcastFitness)
-      .map((item) => ({
-        id: item.id,
-        name: item.name,
-        sourceUrl: item.sourceUrlValue.url as `${"http"}${string}`,
-        metadata: item.metadata,
-        generatedAudioLink: item.generatedAudioLinkValue?.url ?? undefined,
-      }))
-  );
+  return items
+    .filter((item): item is SourceBoardItem => Boolean(item.podcastFitness > 0))
+    .filter((item): item is SourceBoardItem & { sourceUrlValue: { url: string } } => {
+      const url = item.sourceUrlValue?.url;
+      return Boolean(url?.startsWith("http"));
+    })
+    .sort((a, b) => b.podcastFitness - a.podcastFitness)
+    .map(toArticleCandidate);
 };
 
 /**

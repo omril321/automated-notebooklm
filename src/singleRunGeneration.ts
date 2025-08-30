@@ -4,6 +4,7 @@ import { error, info, success } from "./logger";
 import { GeneratedPodcast } from "./types";
 import { extractMetadataFromUrl } from "./services/articleMetadataService";
 import { ArticleMetadata } from "./monday/types";
+import { updateItemWithNotebookLmAudioLink } from "./monday/service";
 import { audioGenerationTracker } from "./services/audioGenerationTrackingService";
 import type { Browser, BrowserContext, Page } from "playwright";
 
@@ -17,13 +18,14 @@ const DEFAULT_HEADLESS = false;
 type GeneratePodcastOptions = {
   sourceUrl: string;
   existingNotebookUrl?: string;
+  mondayItemId: string;
 };
 
 /**
  * Unified generator used for both new and existing NotebookLM flows
  */
 export async function generatePodcast(options: GeneratePodcastOptions): Promise<PodcastResult> {
-  const { sourceUrl, existingNotebookUrl } = options;
+  const { sourceUrl, existingNotebookUrl, mondayItemId } = options;
   if (!sourceUrl?.trim()) throw new Error("generatePodcast: 'sourceUrl' must be a non-empty string");
 
   const { browser, page, service } = await initializeNotebookLmAutomation();
@@ -33,7 +35,7 @@ export async function generatePodcast(options: GeneratePodcastOptions): Promise<
     if (existingNotebookUrl?.trim()) {
       await service.openExistingNotebook(existingNotebookUrl);
     } else {
-      await setupNewNotebookFromSource(service, sourceUrl);
+      await setupNewNotebookFromSource(service, sourceUrl, mondayItemId);
     }
     const { details, metadata } = await downloadAndAssembleDetails(service, sourceUrl);
     return { details, metadata };
@@ -51,7 +53,11 @@ export async function generatePodcast(options: GeneratePodcastOptions): Promise<
   }
 }
 
-async function setupNewNotebookFromSource(service: NotebookLMService, sourceUrl: string): Promise<void> {
+async function setupNewNotebookFromSource(
+  service: NotebookLMService,
+  sourceUrl: string,
+  mondayItemId: string
+): Promise<void> {
   info("Starting podcast generation from NotebookLM...");
   await audioGenerationTracker.validateRateLimit();
 
@@ -63,7 +69,8 @@ async function setupNewNotebookFromSource(service: NotebookLMService, sourceUrl:
   await service.setLanguage();
 
   info("Generating studio podcast...");
-  await service.generateStudioPodcast();
+  const notebookUrl = await service.generateStudioPodcast();
+  await updateItemWithNotebookLmAudioLink(mondayItemId, notebookUrl);
   await audioGenerationTracker.recordAudioGeneration(sourceUrl);
 }
 
@@ -94,8 +101,8 @@ async function downloadAndAssembleDetails(
  * @param url Source URL to generate podcast from
  * @returns Promise with podcast generation results
  */
-export async function generatePodcastFromUrl(url: string): Promise<PodcastResult> {
-  return generatePodcast({ sourceUrl: url });
+export async function generatePodcastFromUrl(url: string, mondayItemId: string): Promise<PodcastResult> {
+  return generatePodcast({ sourceUrl: url, mondayItemId });
 }
 
 /**
@@ -104,12 +111,13 @@ export async function generatePodcastFromUrl(url: string): Promise<PodcastResult
  */
 export async function generatePodcastFromExistingNotebook(
   notebookUrl: string,
-  sourceUrl: string
+  sourceUrl: string,
+  mondayItemId: string
 ): Promise<PodcastResult> {
-  return generatePodcast({ sourceUrl, existingNotebookUrl: notebookUrl });
+  return generatePodcast({ sourceUrl, existingNotebookUrl: notebookUrl, mondayItemId });
 }
 
-async function initializeNotebookLmAutomation(): Promise<{
+export async function initializeNotebookLmAutomation(): Promise<{
   browser: Browser;
   context: BrowserContext;
   page: Page;
