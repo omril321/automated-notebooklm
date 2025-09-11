@@ -101,8 +101,8 @@ describe("ContentAnalysisService (delegator)", () => {
           name.toLowerCase() === "content-type"
             ? "application/pdf"
             : name.toLowerCase() === "content-disposition"
-            ? contentDisposition
-            : null,
+              ? contentDisposition
+              : null,
       },
       text: () => Promise.resolve(""),
     } as any);

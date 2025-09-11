@@ -12,7 +12,11 @@ export const MondayErrorType = {
 export type MondayErrorType = (typeof MondayErrorType)[keyof typeof MondayErrorType];
 
 export class MondayError extends Error {
-  constructor(public readonly type: MondayErrorType, message: string, public readonly metadata?: unknown) {
+  constructor(
+    public readonly type: MondayErrorType,
+    message: string,
+    public readonly metadata?: unknown
+  ) {
     super(message);
     this.name = "MondayError";
   }

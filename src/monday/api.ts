@@ -41,8 +41,8 @@ export async function getBoardItems({
   query GetBoardItems($boardId: [ID!]) {
     boards(ids: $boardId) {
       items_page(limit: ${LIMIT}, query_params: {rules: [{column_id: "group", compare_value: ${JSON.stringify(
-    excludedGroups
-  )}, operator: not_any_of}]}) {
+        excludedGroups
+      )}, operator: not_any_of}]}) {
         items {
           id
           name
