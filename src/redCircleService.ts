@@ -1,4 +1,4 @@
-import { Page } from "playwright";
+import { Page, Browser } from "playwright";
 import { initializeBrowser } from "./browserService";
 import { loadConfig } from "./configService";
 import { info, error } from "./logger";
@@ -6,18 +6,22 @@ import * as path from "path";
 import { existsSync } from "fs";
 import { ConvertedPodcast, UploadedPodcast, toUploadedPodcast } from "./types";
 
+const RED_CIRCLE_URL = "https://redcircle.com";
+const RED_CIRCLE_DASHBOARD_URL = "https://app.redcircle.com/shows";
 /**
  * Upload episode file and metadata to RedCircle
  * @param podcast Podcast metadata with MP3 file path
+ * @param title Episode title
+ * @param description Episode description
+ * @param page Existing page that's already logged in and has podcast selected
  * @returns Promise with uploaded podcast metadata
  */
 export async function uploadEpisode(
   podcast: ConvertedPodcast,
   title: string,
-  description: string
+  description: string,
+  page: Page
 ): Promise<UploadedPodcast> {
-  validateConfiguration();
-
   if (!podcast.mp3Path) {
     throw new Error("MP3 path is required for upload");
   }
@@ -27,11 +31,7 @@ export async function uploadEpisode(
   info(`Starting RedCircle upload for: ${title}`);
   info(`File path: ${path.resolve(podcast.mp3Path)}`);
 
-  const { browser, page } = await initializeRedCircleAutomation();
-
   try {
-    await loginToRedCircle(page);
-    await selectPodcast(page);
     await createNewEpisode(page);
     await fillEpisodeDetails(page, title, description);
     await uploadAudioFile(page, podcast.mp3Path);
@@ -49,8 +49,6 @@ export async function uploadEpisode(
   } catch (err) {
     await handleUploadError(page, err);
     throw err;
-  } finally {
-    await browser.close();
   }
 }
 
@@ -86,7 +84,7 @@ async function loginToRedCircle(page: Page): Promise<void> {
   const config = loadConfig();
 
   info("Navigating to RedCircle.com...");
-  await page.goto("https://redcircle.com/");
+  await page.goto(RED_CIRCLE_URL);
 
   info("Clicking Log in...");
   await page.click('a:has-text("Log in")');
@@ -104,6 +102,17 @@ async function selectPodcast(page: Page): Promise<void> {
 
   info(`Selecting podcast: ${config.publishedPodcastName}`);
   await page.click(`img[alt="${config.publishedPodcastName}"]`);
+}
+
+export async function navigateToMainPodcastPage(page: Page): Promise<void> {
+  info("Navigating to main podcast page...");
+
+  await page.goto(RED_CIRCLE_DASHBOARD_URL);
+
+  // Select the podcast again to get to the main podcast page
+  await selectPodcast(page);
+
+  info("Navigated to main podcast page");
 }
 
 async function createNewEpisode(page: Page): Promise<void> {
@@ -149,4 +158,20 @@ async function handleUploadError(page: Page, err: unknown): Promise<void> {
   } catch (screenshotError) {
     error("Failed to capture debug screenshot");
   }
+}
+
+/**
+ * Initialize a persistent RedCircle session for batch operations
+ * Returns page that's already logged in and has podcast selected
+ */
+export async function initializePersistentRedCircleSession(): Promise<{ browser: any; page: Page }> {
+  validateConfiguration();
+
+  const { browser, page } = await initializeRedCircleAutomation();
+
+  await loginToRedCircle(page);
+  await selectPodcast(page);
+
+  info("✅ Persistent RedCircle session initialized");
+  return { browser, page };
 }

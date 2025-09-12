@@ -19,19 +19,18 @@ type GeneratePodcastOptions = {
   sourceUrl: string;
   existingNotebookUrl?: string;
   mondayItemId: string;
+  service: NotebookLMService;
 };
 
 /**
- * Unified generator used for both new and existing NotebookLM flows
+ * Unified generator using existing NotebookLM service
+ * Assumes service is already logged in and ready
  */
 export async function generatePodcast(options: GeneratePodcastOptions): Promise<PodcastResult> {
-  const { sourceUrl, existingNotebookUrl, mondayItemId } = options;
+  const { sourceUrl, existingNotebookUrl, mondayItemId, service } = options;
   if (!sourceUrl?.trim()) throw new Error("generatePodcast: 'sourceUrl' must be a non-empty string");
 
-  const { browser, page, service } = await initializeNotebookLmAutomation();
-
   try {
-    await service.loginToGoogle();
     if (existingNotebookUrl?.trim()) {
       await service.openExistingNotebook(existingNotebookUrl);
     } else {
@@ -40,16 +39,18 @@ export async function generatePodcast(options: GeneratePodcastOptions): Promise<
     const { details, metadata } = await downloadAndAssembleDetails(service, sourceUrl);
     return { details, metadata };
   } catch (err) {
-    await captureDebugScreenshot(page, existingNotebookUrl ? "podcast-existing" : "podcast-generation");
+    // Capture debug screenshot for troubleshooting
+    const page = (service as any).page; // Access underlying page for screenshot
+    if (page) {
+      await captureDebugScreenshot(page, existingNotebookUrl ? "podcast-existing" : "podcast-generation");
+    }
+    
     error(
       existingNotebookUrl
         ? `Failed to resume podcast from NotebookLM ${existingNotebookUrl}: ${err}`
         : `Failed to generate podcast from URL ${sourceUrl}: ${err}`
     );
     throw err;
-  } finally {
-    await browser.close();
-    info("Browser closed successfully");
   }
 }
 
@@ -96,26 +97,7 @@ async function downloadAndAssembleDetails(
   return { details, metadata };
 }
 
-/**
- * Generate podcast WAV file from URL using NotebookLM
- * @param url Source URL to generate podcast from
- * @returns Promise with podcast generation results
- */
-export async function generatePodcastFromUrl(url: string, mondayItemId: string): Promise<PodcastResult> {
-  return generatePodcast({ sourceUrl: url, mondayItemId });
-}
 
-/**
- * Resume from an existing NotebookLM page that already generated audio.
- * Navigates to the provided NotebookLM URL, downloads the WAV, and extracts details.
- */
-export async function generatePodcastFromExistingNotebook(
-  notebookUrl: string,
-  sourceUrl: string,
-  mondayItemId: string
-): Promise<PodcastResult> {
-  return generatePodcast({ sourceUrl, existingNotebookUrl: notebookUrl, mondayItemId });
-}
 
 export async function initializeNotebookLmAutomation(): Promise<{
   browser: Browser;

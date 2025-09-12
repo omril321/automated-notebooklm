@@ -94,6 +94,13 @@ export class NotebookLMService {
     return await saveToTempFile(download);
   }
 
+  async navigateToMainPage(): Promise<void> {
+    info("Navigating to NotebookLM main page...");
+    await this.page.goto(this.baseUrl);
+    await this.waitForWelcomeMessage();
+    success("Navigated to NotebookLM main page");
+  }
+
   async createNewNotebook(): Promise<void> {
     info("Clicking on create new notebook...");
     const createButton = this.page.getByLabel("Create new notebook", { exact: true });
