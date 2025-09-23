@@ -47,7 +47,7 @@ async function processSingleCandidate(
 ): Promise<{ details: GeneratedPodcast; candidate: ArticleCandidate }> {
   // Always navigate to main page before each item to ensure correct state
   await service.navigateToMainPage();
-  
+
   const result = await generatePodcast({
     sourceUrl: candidate.sourceUrl,
     existingNotebookUrl: candidate.generatedAudioLink,
@@ -210,7 +210,7 @@ async function processUploadsBatch(
     try {
       // Always navigate to main podcast page before each upload to ensure correct state
       await navigateToMainPodcastPage(page);
-      
+
       const title = await processSingleUpload(details, candidate, page);
       success(`✅ Uploaded ${i + 1}/${generationResults.length}: ${title}`);
     } catch (err) {
@@ -309,10 +309,10 @@ function logBatchStart(audioReady: ArticleCandidate[], regularToProcess: Article
   const totalCandidates = audioReady.length + regularToProcess.length;
   info(`\n🚀 Starting optimized batch processing:`);
   info(`  📋 Total candidates: ${totalCandidates}`);
-  info(`  🔊 Audio-ready: ${audioReady.length}`);
-  info(`  🆕 New generations: ${regularToProcess.length}`);
-  info(`  ⏱️  Delay between new generations: ${NEW_GENERATION_DELAY_MS / 1000}s`);
-  info(`  🎯 OPTIMIZATION: Using persistent browser sessions instead of ${totalCandidates * 2} separate instances`);
+  info(`  🔊 ${audioReady.length} Audio-ready: ${audioReady.map((c) => c.metadata?.title || c.name).join(", ")}`);
+  info(
+    `  🆕 ${regularToProcess.length} New generations: ${regularToProcess.map((c) => c.metadata?.title || c.name).join(", ")}`
+  );
 }
 
 /**

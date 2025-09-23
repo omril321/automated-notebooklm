@@ -10,6 +10,7 @@ const POST_SUBMIT_WAIT_MS = 4_000;
 const DOWNLOAD_START_WAIT_MS = 10_000;
 const AFTER_LOGIN_TIMEOUT = 300_000;
 const TITLE_DESC_WAIT_MS = 10_000;
+const TITLE_GENERATION_INITIAL_WAIT_MS = 5_000; // Initial wait for title generation
 const AUDIO_GENERATION_TIMEOUT_MS = 12 * 60 * 1000; // 12 minutes
 
 /**
@@ -73,7 +74,7 @@ export class NotebookLMService {
 
     let download: Download | null = null;
     this.page.once("download", (_download) => {
-      info(`Download event received: ${_download.url()}`);
+      info(`Download event received`);
       _download
         .path()
         .then((path) => success(`Downloaded file to ${path}`))
@@ -171,10 +172,10 @@ export class NotebookLMService {
 
   /**
    * Triggers Studio Podcast generation and returns the current NotebookLM page URL
-   * after generation has started. The caller is responsible for persisting this URL
-   * externally (e.g., to Monday via updateItemWithNotebookLmAudioLink).
+   * and the extracted title after generation has started. The caller is responsible
+   * for persisting this URL externally (e.g., to Monday via updateItemWithNotebookLmAudioLinkAndTitle).
    */
-  async generateStudioPodcast(): Promise<string> {
+  async generateStudioPodcast(): Promise<{ url: string; title: string }> {
     info("Starting to generate Studio Podcast...");
 
     // Audio Overview can appear in two locations:
@@ -185,7 +186,7 @@ export class NotebookLMService {
     const audioOverviewButtonInside = this.page
       .locator(".studio-panel")
       .getByRole("button")
-      .filter({ hasText: "Audio Overview" });
+      .filter({ hasText: "Audio Overview", visible: true });
 
     const audioOverviewButton = audioOverviewButtonOutside.or(audioOverviewButtonInside);
 
@@ -200,10 +201,51 @@ export class NotebookLMService {
 
     await selectedButton.click();
 
-    success("Clicked on Audio Overview button");
+    success(`Clicked on Audio Overview button: ${audioOverviewButton.toString()}`);
     await this.assertGenerationStarted();
-    // Return the current NotebookLM page URL so the caller can persist it externally
-    return this.page.url();
+
+    // Wait for and extract the NotebookLM-generated title
+    const title = await this.waitForAndExtractTitle();
+
+    // Return the current NotebookLM page URL and title so the caller can persist them externally
+    return { url: this.page.url(), title };
+  }
+
+  /**
+   * Wait for and extract the NotebookLM-generated title after clicking Generate Audio
+   * @returns Promise with the extracted title
+   */
+  private async waitForAndExtractTitle(): Promise<string> {
+    info("Waiting for NotebookLM to generate title...");
+
+    // Add upfront delay as NotebookLM typically needs 5+ seconds to generate title
+    info(`Waiting ${TITLE_GENERATION_INITIAL_WAIT_MS}ms for initial title generation...`);
+    await this.page.waitForTimeout(TITLE_GENERATION_INITIAL_WAIT_MS);
+
+    const titleElement = this.page.locator(".notebook-title");
+
+    // Wait for title element to be visible
+    await titleElement.waitFor({
+      state: "visible",
+      timeout: TITLE_DESC_WAIT_MS,
+    });
+
+    // Wait for meaningful title content (not "Untitled notebook")
+    await this.page.waitForFunction(
+      () => {
+        const element = document.querySelector(".notebook-title");
+        if (!element || !element.textContent) return false;
+        const title = element.textContent.trim();
+        return title && title !== "Untitled notebook";
+      },
+      {},
+      { timeout: TITLE_DESC_WAIT_MS }
+    );
+
+    const title = await titleElement.textContent();
+    const cleanTitle = title?.trim() || "Untitled Podcast";
+    success(`Extracted NotebookLM-generated title: ${cleanTitle}`);
+    return cleanTitle;
   }
 
   /**

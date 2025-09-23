@@ -4,7 +4,7 @@ import { error, info, success } from "./logger";
 import { GeneratedPodcast } from "./types";
 import { extractMetadataFromUrl } from "./services/articleMetadataService";
 import { ArticleMetadata } from "./monday/types";
-import { updateItemWithNotebookLmAudioLink } from "./monday/service";
+import { updateItemWithNotebookLmAudioLinkAndTitle } from "./monday/service";
 import { audioGenerationTracker } from "./services/audioGenerationTrackingService";
 import type { Browser, BrowserContext, Page } from "playwright";
 
@@ -70,8 +70,8 @@ async function setupNewNotebookFromSource(
   await service.setLanguage();
 
   info("Generating studio podcast...");
-  const notebookUrl = await service.generateStudioPodcast();
-  await updateItemWithNotebookLmAudioLink(mondayItemId, notebookUrl);
+  const { url: notebookUrl, title } = await service.generateStudioPodcast();
+  await updateItemWithNotebookLmAudioLinkAndTitle(mondayItemId, notebookUrl, title);
   await audioGenerationTracker.recordAudioGeneration(sourceUrl);
 }
 

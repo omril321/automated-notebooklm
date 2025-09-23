@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { getPodcastCandidates, updateItemWithGeneratedPodcastUrl, constructMondayItemUrl } from "./service";
+import { getPodcastCandidates, updateItemWithGeneratedPodcastUrl, updateItemWithNotebookLmAudioLinkAndTitle, constructMondayItemUrl } from "./service";
 import * as logger from "../logger";
 
 // Mock the logger
@@ -273,6 +273,49 @@ describe("Monday Service", () => {
       });
 
       expect(logger.success).toHaveBeenCalledWith(`Updated item ${itemId} with podcast URL`);
+    });
+  });
+
+
+  describe("updateItemWithNotebookLmAudioLinkAndTitle", () => {
+    it("should update item with both NotebookLM link and title in single operation", async () => {
+      const itemId = "test-item-id";
+      const url = "https://notebooklm.google.com/notebook/abc123";
+      const title = "AI-Generated Podcast Title";
+
+      await updateItemWithNotebookLmAudioLinkAndTitle(itemId, url, title);
+
+      expect(mockApiClient.operations.changeMultipleColumnValuesOp).toHaveBeenCalledWith({
+        boardId: "test-board-id",
+        itemId,
+        columnValues: JSON.stringify({
+          name: title,
+          nlm_audio: { url, text: url },
+        }),
+      });
+
+      expect(logger.info).toHaveBeenCalledWith(`Updating item ${itemId} with NotebookLM link and title: "${title}"`);
+      expect(logger.success).toHaveBeenCalledWith(`Updated item ${itemId} with NotebookLM generated audio link and title`);
+    });
+
+    it("should handle empty title with NotebookLM link", async () => {
+      const itemId = "test-item-id";
+      const url = "https://notebooklm.google.com/notebook/abc123";
+      const title = "";
+
+      await updateItemWithNotebookLmAudioLinkAndTitle(itemId, url, title);
+
+      expect(mockApiClient.operations.changeMultipleColumnValuesOp).toHaveBeenCalledWith({
+        boardId: "test-board-id",
+        itemId,
+        columnValues: JSON.stringify({
+          name: title,
+          nlm_audio: { url, text: url },
+        }),
+      });
+
+      expect(logger.info).toHaveBeenCalledWith(`Updating item ${itemId} with NotebookLM link and title: ""`);
+      expect(logger.success).toHaveBeenCalledWith(`Updated item ${itemId} with NotebookLM generated audio link and title`);
     });
   });
 

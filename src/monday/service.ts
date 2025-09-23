@@ -231,26 +231,33 @@ export async function updateItemWithGeneratedPodcastUrl(itemId: string, podcastU
   logger.success(`Updated item ${itemId} with podcast URL`);
 }
 
+
 /**
- * Update Monday board item with NotebookLM generated audio link
+ * Update Monday board item with both NotebookLM generated audio link and title
  * @param itemId Monday board item ID
  * @param url NotebookLM page URL to persist in link column
+ * @param title NotebookLM-generated title to set as item name
  */
-export async function updateItemWithNotebookLmAudioLink(itemId: string, url: string): Promise<void> {
+export async function updateItemWithNotebookLmAudioLinkAndTitle(itemId: string, url: string, title: string): Promise<void> {
   const config = createConfigFromEnvironment();
   const apiClient = getMondayApiClient();
 
-  const columnId = REQUIRED_COLUMNS.notebookLmWithGeneratedAudio.id;
+  logger.info(`Updating item ${itemId} with NotebookLM link and title: "${title}"`);
 
-  await apiClient.operations.changeColumnValueOp({
+  const columnValues = {
+    name: title,
+    [REQUIRED_COLUMNS.notebookLmWithGeneratedAudio.id]: { url, text: url },
+  };
+
+  await apiClient.operations.changeMultipleColumnValuesOp({
     boardId: config.boardId,
     itemId,
-    columnId,
-    value: JSON.stringify({ url, text: url }),
+    columnValues: JSON.stringify(columnValues),
   });
 
-  logger.success(`Updated item ${itemId} with NotebookLM generated audio link`);
+  logger.success(`Updated item ${itemId} with NotebookLM generated audio link and title`);
 }
+
 
 /**
  * Construct Monday.com item URL from board config and item ID
