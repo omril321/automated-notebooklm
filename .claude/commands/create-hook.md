@@ -1,17 +1,17 @@
 # Create Hook Command
 
-Create and manage Claude Code hooks with intelligent suggestions based on your project setup.
+Create and manage Claude Code hooks with intelligent suggestions based on the project setup.
 
 ## 📖 Official Documentation Reference
 **Always consult the latest official docs for API updates:**
-- **Primary Hook Documentation**: https://docs.claude.com/en/docs/claude-code/hooks
-- **Hook Troubleshooting**: https://docs.claude.com/en/docs/claude-code/hooks#troubleshooting
+- **Primary Hooks Documentation**: https://docs.claude.com/en/docs/claude-code/hooks.md
+- **Hooks Guide**: https://docs.claude.com/en/docs/claude-code/hooks-guide.md
 
 ⚠️ **Note**: If there are discrepancies between this command and the official docs, the official documentation takes precedence.
 
 ## Workflow
 
-When `/create-hook` is used:
+Example use cases for `/create-hooks` command:
 
 ### 1. Environment Analysis
 - **Read existing hooks**: Check `~/.claude/settings.json`, `.claude/settings.json`, and `.claude/settings.local.json`
@@ -44,8 +44,8 @@ Ask user:
 1. **Goal**: "What should this hook do?"
 2. **Suggestion**: If applicable, offer relevant suggestions from analysis
 3. **Scope**: Choose global, project, or project-local
-4. **Event type**: PreToolUse, PostToolUse, UserPromptSubmit, etc.
-5. **Tool matcher**: Which tools to hook (Write, Edit, Bash, etc.)
+4. **Event type**: PreToolUse, PostToolUse, Notification, UserPromptSubmit, Stop, SubagentStop, Precompact, SessionStart, SessionEnd
+5. **Tool matcher**: Which tools should trigger the hook (Write, Edit, Bash, etc.)
 6. **Hook response approach**: "How should this hook communicate results?"
    - **Exit codes only**: Simple (exit 0 = success, exit 2 = block in PreToolUse)
    - **JSON response**: Advanced control (blocking, context, decisions)
@@ -64,13 +64,14 @@ Ask user:
 11. **Language**: JavaScript, TypeScript, or Bash (warn if other requested)
 
 ### 4. Hook Creation
-- **Create hook directory**: `~/.claude/hooks/` or `.claude/hooks/` based on scope
-- **Generate script**: Create hook script with:
+- **Create hooks directory**: `~/.claude/hooks/` or `.claude/hooks/` based on scope
+- **Generate script**: Create hooks script with:
   - Proper shebang and executable permissions
   - Template code for the chosen language
   - Project-specific commands (use detected config paths)
   - Comments explaining the hook's purpose
-- **Update settings**: Add hook configuration to appropriate settings.json
+- **Update settings**: Add hooks configuration to appropriate settings.json
+- **Use absolute paths**: Avoid relative paths to scripts and executables. Use `$CLAUDE_PROJECT_DIR` to reference project root.
 - **Offer validation**: Ask if user wants to test the hook
 
 ### 5. Testing & Validation
@@ -89,14 +90,17 @@ Ask user:
    - Security: Attempt dangerous operations
 
 **Verification Steps:**
-3. **Check `/hooks` command** to verify registration
-4. **Run with `claude --debug`** to see detailed hook execution
 5. **Verify expected behavior**: Does it block/warn/provide context as intended?
+<example>
+- A hook is created to prevent deletion of a file
+- Back up the original file, or create a dummy file to validate the correctness of the script
+- Attempt to perform the action that the hook is designed to prevent (try to delete the protected file)
+- Confirm that you are unable to perform that action.
 
 ### 6. Troubleshooting (When Things Go Wrong)
-**If the hook doesn't work as expected:**
+**If the hook doesn't work as expected, advise the user to perform the following checks:**
 
-1. **Debug Mode**: Run `claude --debug` to see detailed hook execution logs
+1. **Debug Mode**: Run `claude --debug hooks` to see detailed hook execution logs
 2. **Check Registration**: Use `/hooks` command - is your hook listed?
 3. **Start Simple**: If complex hook fails, test with basic echo command first
 4. **Common Issues**:
@@ -104,7 +108,7 @@ Ask user:
    - Hook registered but not executing: Try wildcard matcher `"*"` for debugging
    - Scripts not running: Check file permissions (`chmod +x`), verify shebang line
 
-**For detailed troubleshooting steps, see**: https://docs.claude.com/en/docs/claude-code/hooks#troubleshooting
+**For detailed troubleshooting steps, see**: https://docs.claude.com/en/docs/claude-code/hooks#basic-troubleshooting
 
 ## 🚨 Critical Implementation Details (Battle-Tested)
 
@@ -160,6 +164,11 @@ process.stdin.on("end", () => {
 }
 ```
 
+<!--
+    NOTE: I'm not sure if this works, unless you're talking about a secondary array than the one in settings.json
+    It says clearly in the [docs](https://docs.claude.com/en/docs/claude-code/hooks#hook-execution-details) that hooks run in parallel:
+    "Parallelization: All matching hooks run in parallel"
+-->
 ### Hook Execution Order Best Practices
 - **Array order = execution order** in settings.json
 - **Validation BEFORE modification** (TypeScript check before Prettier)
@@ -261,6 +270,8 @@ try {
 ```
 
 ## Testing Methodology (Proven Approach)
+
+<!-- Isn't this more or less a duplication of the information above? -->
 
 ### Happy Path Testing
 1. **Create valid file** that should pass hook validation
