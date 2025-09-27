@@ -1,0 +1,39 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//Users/omrila/.claude/**)"
+    ],
+    "deny": [],
+    "ask": []
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/prettier-format.js"
+          },
+          {
+            "type": "command",
+            "command": ".claude/hooks/typescript-check.js"
+          }
+        ]
+      },
+      {
+        "matcher": "Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/prettier-format.js"
+          },
+          {
+            "type": "command",
+            "command": ".claude/hooks/typescript-check.js"
+          }
+        ]
+      }
+    ]
+  }
+}
