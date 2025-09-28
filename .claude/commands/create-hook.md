@@ -1,21 +1,21 @@
 # Create Hook Command
 
-I will analyze your project, suggest practical hooks, and create them with proper testing.
+Analyze my project, suggest practical hooks, and create them with proper testing.
 
-## What I Do
+## Your Task
 
-When you use `/create-hook`, I will:
+When I use `/create-hook`, you should:
 
 1. **Analyze environment** - Detect tooling and existing hooks
 2. **Suggest hooks** - Based on your project configuration
 3. **Configure hook** - Ask targeted questions and create the script
 4. **Test & validate** - Ensure the hook works correctly
 
-## My Workflow
+## Your Workflow
 
 ### 1. Environment Analysis & Suggestions
 
-I will automatically detect your project tooling and suggest relevant hooks:
+Automatically detect the project tooling and suggest relevant hooks:
 
 **If I find TypeScript (`tsconfig.json`):**
 
@@ -58,9 +58,9 @@ Security sensitive? → Suggest security hooks
 
 ### 2. Hook Configuration
 
-I will start by asking: **"What should this hook do?"** and offer relevant suggestions from my analysis.
+Start by asking: **"What should this hook do?"** and offer relevant suggestions from your analysis.
 
-Then I'll understand the context from your description and **only ask about details I'm unsure about**:
+Then understand the context from my description and **only ask about details you're unsure about**:
 
 1. **Trigger timing**: When should it run?
    - `PreToolUse`: Before file operations (can block)
@@ -93,7 +93,7 @@ Then I'll understand the context from your description and **only ask about deta
 
 ### 3. Hook Creation
 
-I will:
+You should:
 
 - **Create hooks directory**: `~/.claude/hooks/` or `.claude/hooks/` based on scope
 - **Generate script**: Create hook script with:
@@ -102,7 +102,7 @@ I will:
   - Comments explaining the hook's purpose
 - **Update settings**: Add hook configuration to appropriate settings.json
 - **Use absolute paths**: Avoid relative paths to scripts and executables. Use `$CLAUDE_PROJECT_DIR` to reference project root
-- **Offer validation**: Ask if you want me to test the hook
+- **Offer validation**: Ask if I want you to test the hook
 
 **Key Implementation Standards:**
 
@@ -115,7 +115,7 @@ I will:
 
 **⚠️ CRITICAL: Input/Output Format**
 
-This is where most hook implementations fail. I will pay extra attention to:
+This is where most hook implementations fail. Pay extra attention to:
 
 - **Input**: Reading JSON from stdin correctly (not argv)
 - **Output**: Using correct top-level JSON structure for Claude communication
@@ -127,20 +127,20 @@ This is where most hook implementations fail. I will pay extra attention to:
 
 **Happy Path Testing:**
 
-1. **Test expected success scenario** - I'll create conditions where hook should pass
+1. **Test expected success scenario** - Create conditions where hook should pass
    - _Examples_: TypeScript (valid code), Linting (formatted code), Security (safe commands)
 
-**Sad Path Testing:** 2. **Test expected failure scenario** - I'll create conditions where hook should fail/warn
+**Sad Path Testing:** 2. **Test expected failure scenario** - Create conditions where hook should fail/warn
 
 - _Examples_: TypeScript (type errors), Linting (unformatted code), Security (dangerous operations)
 
-**Verification Steps:** 3. **Verify expected behavior**: I'll check if it blocks/warns/provides context as intended
+**Verification Steps:** 3. **Verify expected behavior**: Check if it blocks/warns/provides context as intended
 
 **Example Testing Process:**
 
-- For a hook preventing file deletion: I'll create a test file, attempt the protected action, and verify the hook prevents it
+- For a hook preventing file deletion: Create a test file, attempt the protected action, and verify the hook prevents it
 
-**If Issues Occur, I will:**
+**If Issues Occur, you should:**
 
 - Check hook registration in settings
 - Verify script permissions (`chmod +x`)
@@ -213,4 +213,4 @@ _Complete templates available at: https://docs.claude.com/en/docs/claude-code/ho
 - Integrates properly with Claude for automated fixes
 - Follows project conventions and detected tooling
 
-**Result**: You get a working hook that enhances your development workflow with intelligent automation and quality checks.
+**Result**: I get a working hook that enhances my development workflow with intelligent automation and quality checks.
