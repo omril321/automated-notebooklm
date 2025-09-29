@@ -1,10 +1,8 @@
 # Create Hook Command
 
-Analyze my project, suggest practical hooks, and create them with proper testing.
+Analyze the project, suggest practical hooks, and create them with proper testing.
 
-## Your Task
-
-When I use `/create-hook`, you should:
+## Your Task (/create-hook)
 
 1. **Analyze environment** - Detect tooling and existing hooks
 2. **Suggest hooks** - Based on your project configuration
@@ -17,27 +15,27 @@ When I use `/create-hook`, you should:
 
 Automatically detect the project tooling and suggest relevant hooks:
 
-**If I find TypeScript (`tsconfig.json`):**
+**When TypeScript is detected (`tsconfig.json`):**
 
 - PostToolUse hook: "Type-check files after editing"
 - PreToolUse hook: "Block edits with type errors"
 
-**If I find Prettier (`.prettierrc`, `prettier.config.js`):**
+**When Prettier is detected (`.prettierrc`, `prettier.config.js`):**
 
 - PostToolUse hook: "Auto-format files after editing"
 - PreToolUse hook: "Require formatted code"
 
-**If I find ESLint (`.eslintrc.*`):**
+**When ESLint is detected (`.eslintrc.*`):**
 
 - PostToolUse hook: "Lint and auto-fix after editing"
 - PreToolUse hook: "Block commits with linting errors"
 
-**If I find package.json with scripts:**
+**When package.json has scripts:**
 
 - `test` script → "Run tests before commits"
 - `build` script → "Validate build before commits"
 
-**If I find git repository:**
+**When a git repository is detected:**
 
 - PreToolUse/Bash hook: "Prevent commits with secrets"
 - PostToolUse hook: "Security scan on file changes"
@@ -60,7 +58,7 @@ Security sensitive? → Suggest security hooks
 
 Start by asking: **"What should this hook do?"** and offer relevant suggestions from your analysis.
 
-Then understand the context from my description and **only ask about details you're unsure about**:
+Then understand the context from the user's description and **only ask about details you're unsure about**:
 
 1. **Trigger timing**: When should it run?
    - `PreToolUse`: Before file operations (can block)
@@ -81,7 +79,7 @@ Then understand the context from my description and **only ask about details you
    - PreToolUse: Can block operations (security, validation)
    - PostToolUse: Usually provide feedback only
 
-6. **Claude integration** (CRITICAL): "Should I automatically see and fix issues this hook detects?"
+6. **Claude integration** (CRITICAL): "Should Claude Code automatically see and fix issues this hook detects?"
    - If YES: Use `additionalContext` for error communication
    - If NO: Use `suppressOutput: true` for silent operation
 
@@ -102,7 +100,7 @@ You should:
   - Comments explaining the hook's purpose
 - **Update settings**: Add hook configuration to appropriate settings.json
 - **Use absolute paths**: Avoid relative paths to scripts and executables. Use `$CLAUDE_PROJECT_DIR` to reference project root
-- **Offer validation**: Ask if I want you to test the hook
+- **Offer validation**: Ask if the user wants you to test the hook
 
 **Key Implementation Standards:**
 
@@ -213,4 +211,4 @@ _Complete templates available at: https://docs.claude.com/en/docs/claude-code/ho
 - Integrates properly with Claude for automated fixes
 - Follows project conventions and detected tooling
 
-**Result**: I get a working hook that enhances my development workflow with intelligent automation and quality checks.
+**Result**: The user gets a working hook that enhances their development workflow with intelligent automation and quality checks.
