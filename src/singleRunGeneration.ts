@@ -13,6 +13,19 @@ export type PodcastResult = {
   metadata: ArticleMetadata;
 };
 
+type GenerationSuccess = {
+  success: true;
+  data: PodcastResult;
+};
+
+type GenerationFailure = {
+  success: false;
+  reason: "invalid_resource" | "error";
+  error: Error;
+};
+
+export type GenerationResult = GenerationSuccess | GenerationFailure;
+
 const DEFAULT_HEADLESS = false;
 
 type GeneratePodcastOptions = {
@@ -26,9 +39,12 @@ type GeneratePodcastOptions = {
  * Unified generator using existing NotebookLM service
  * Assumes service is already logged in and ready
  */
-export async function generatePodcast(options: GeneratePodcastOptions): Promise<PodcastResult> {
+export async function generatePodcast(options: GeneratePodcastOptions): Promise<GenerationResult> {
   const { sourceUrl, existingNotebookUrl, mondayItemId, service } = options;
-  if (!sourceUrl?.trim()) throw new Error("generatePodcast: 'sourceUrl' must be a non-empty string");
+  if (!sourceUrl?.trim()) {
+    const err = new Error("generatePodcast: 'sourceUrl' must be a non-empty string");
+    return { success: false, reason: "error", error: err };
+  }
 
   try {
     if (existingNotebookUrl?.trim()) {
@@ -37,20 +53,27 @@ export async function generatePodcast(options: GeneratePodcastOptions): Promise<
       await setupNewNotebookFromSource(service, sourceUrl, mondayItemId);
     }
     const { details, metadata } = await downloadAndAssembleDetails(service, sourceUrl);
-    return { details, metadata };
+    return { success: true, data: { details, metadata } };
   } catch (err) {
     // Capture debug screenshot for troubleshooting
     const page = (service as any).page; // Access underlying page for screenshot
     if (page) {
       await captureDebugScreenshot(page, existingNotebookUrl ? "podcast-existing" : "podcast-generation");
     }
-    
+
     error(
       existingNotebookUrl
         ? `Failed to resume podcast from NotebookLM ${existingNotebookUrl}: ${err}`
         : `Failed to generate podcast from URL ${sourceUrl}: ${err}`
     );
-    throw err;
+
+    // Check if this is an invalid resource error
+    const errorInstance = err instanceof Error ? err : new Error(String(err));
+    if (errorInstance.message.includes("Invalid resource detected by NotebookLM")) {
+      return { success: false, reason: "invalid_resource", error: errorInstance };
+    }
+
+    return { success: false, reason: "error", error: errorInstance };
   }
 }
 
@@ -96,8 +119,6 @@ async function downloadAndAssembleDetails(
   };
   return { details, metadata };
 }
-
-
 
 export async function initializeNotebookLmAutomation(): Promise<{
   browser: Browser;

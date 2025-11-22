@@ -231,14 +231,17 @@ export async function updateItemWithGeneratedPodcastUrl(itemId: string, podcastU
   logger.success(`Updated item ${itemId} with podcast URL`);
 }
 
-
 /**
  * Update Monday board item with both NotebookLM generated audio link and title
  * @param itemId Monday board item ID
  * @param url NotebookLM page URL to persist in link column
  * @param title NotebookLM-generated title to set as item name
  */
-export async function updateItemWithNotebookLmAudioLinkAndTitle(itemId: string, url: string, title: string): Promise<void> {
+export async function updateItemWithNotebookLmAudioLinkAndTitle(
+  itemId: string,
+  url: string,
+  title: string
+): Promise<void> {
   const config = createConfigFromEnvironment();
   const apiClient = getMondayApiClient();
 
@@ -258,6 +261,26 @@ export async function updateItemWithNotebookLmAudioLinkAndTitle(itemId: string, 
   logger.success(`Updated item ${itemId} with NotebookLM generated audio link and title`);
 }
 
+/**
+ * Mark Monday board item as non-podcastable
+ * Used when NotebookLM rejects a resource as invalid
+ * @param itemId Monday board item ID
+ */
+export async function markItemAsNonPodcastable(itemId: string): Promise<void> {
+  const config = createConfigFromEnvironment();
+  const apiClient = getMondayApiClient();
+
+  logger.info(`Marking item ${itemId} as non-podcastable`);
+
+  await apiClient.operations.changeColumnValueOp({
+    boardId: config.boardId,
+    itemId,
+    columnId: REQUIRED_COLUMNS.nonPodcastable.id,
+    value: JSON.stringify({ checked: "true" }),
+  });
+
+  logger.success(`Marked item ${itemId} as non-podcastable`);
+}
 
 /**
  * Construct Monday.com item URL from board config and item ID

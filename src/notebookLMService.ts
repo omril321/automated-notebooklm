@@ -1,7 +1,8 @@
-import { Download, Page, expect } from "playwright/test";
+import { Download, Page, expect, Locator } from "playwright/test";
 import { error, info, success } from "./logger";
 import { loadConfig } from "./configService";
 import { saveToTempFile } from "./downloadUtils";
+import { captureDebugScreenshot } from "./browserService";
 
 const TYPING_DELAY_EMAIL_MS = 56;
 const TYPING_DELAY_PASSWORD_MS = 61;
@@ -12,6 +13,7 @@ const AFTER_LOGIN_TIMEOUT = 300_000;
 const TITLE_DESC_WAIT_MS = 10_000;
 const TITLE_GENERATION_INITIAL_WAIT_MS = 5_000; // Initial wait for title generation
 const AUDIO_GENERATION_TIMEOUT_MS = 12 * 60 * 1000; // 12 minutes
+const AUDIO_OVERVIEW_BUTTON_TIMEOUT_MS = 10_000; // Shorter timeout for detecting invalid resources
 
 /**
  * Service for automating interactions with Google NotebookLM
@@ -149,6 +151,21 @@ export class NotebookLMService {
     success("URL resources submitted successfully");
   }
 
+  /**
+   * Check if NotebookLM detected an invalid resource
+   * @throws Error if an error container is detected
+   */
+  private async throwIfInvalidResource(): Promise<void> {
+    const errorContainer = this.page.locator(".single-source-error-container");
+    const isErrorVisible = await errorContainer.isVisible().catch(() => false);
+
+    if (isErrorVisible) {
+      error("Invalid resource detected by NotebookLM");
+      await captureDebugScreenshot(this.page, "invalid-resource");
+      throw new Error("Invalid resource detected by NotebookLM");
+    }
+  }
+
   async setLanguage(language: "עברית" | "English" = "English"): Promise<void> {
     info(`Setting output language to ${language}...`);
 
@@ -168,6 +185,22 @@ export class NotebookLMService {
     await closeButton.click();
 
     success(`Language set to ${language}`);
+  }
+
+  /**
+   * Wait for Audio Overview button to be enabled, checking for invalid resource errors
+   * @param button The button locator to wait for
+   * @throws Error if invalid resource is detected
+   */
+  private async waitForEnabledAudioOverviewButton(button: Locator): Promise<void> {
+    try {
+      await expect(button).toBeEnabled({ timeout: AUDIO_OVERVIEW_BUTTON_TIMEOUT_MS });
+    } catch (timeoutError) {
+      // If button didn't become enabled, check if resource is invalid
+      await this.throwIfInvalidResource();
+      // If no invalid resource error was found, re-throw the timeout error
+      throw timeoutError;
+    }
   }
 
   /**
@@ -197,12 +230,20 @@ export class NotebookLMService {
     // Use Playwright's built-in expect assertions with auto-retry and waiting
     // These replace manual waitFor calls and are more reliable
     await expect(selectedButton).toBeVisible();
-    await expect(selectedButton).toBeEnabled({ timeout: SELECTOR_TIMEOUT_MS });
+    await this.waitForEnabledAudioOverviewButton(selectedButton);
 
     await selectedButton.click();
 
     success(`Clicked on Audio Overview button: ${audioOverviewButton.toString()}`);
-    await this.assertGenerationStarted();
+
+    try {
+      await this.assertGenerationStarted();
+    } catch (err) {
+      // If generation didn't start, check if resource is invalid
+      await this.throwIfInvalidResource();
+      // If no invalid resource error, re-throw the original error
+      throw err;
+    }
 
     // Wait for and extract the NotebookLM-generated title
     const title = await this.waitForAndExtractTitle();

@@ -1,14 +1,14 @@
-import { generatePodcast, initializeNotebookLmAutomation } from "./singleRunGeneration";
+import { generatePodcast, initializeNotebookLmAutomation, GenerationResult } from "./singleRunGeneration";
 import { NotebookLMService } from "./notebookLMService";
 import { convertToMp3 } from "./audioConversionService";
 import { uploadEpisode, initializePersistentRedCircleSession, navigateToMainPodcastPage } from "./redCircleService";
-import { error, info, success } from "./logger";
+import { error, info, success, warning } from "./logger";
 import { GeneratedPodcast } from "./types";
-import { getPodcastCandidates, updateItemWithGeneratedPodcastUrl } from "./monday/service";
+import { getPodcastCandidates, updateItemWithGeneratedPodcastUrl, markItemAsNonPodcastable } from "./monday/service";
 import { audioGenerationTracker } from "./services/audioGenerationTrackingService";
 import { finalizePodcastDetails } from "./services/articleMetadataService";
 import { ArticleCandidate } from "./monday/types";
-import { Page, Browser } from "playwright";
+import { Page } from "playwright";
 
 const DEFAULT_DOWNLOADS_DIR = "./downloads";
 const NEW_GENERATION_DELAY_MS = 10_000; // 10 seconds between new generations
@@ -22,7 +22,7 @@ function sleep(ms: number): Promise<void> {
 
 type ProcessingError = {
   url: string;
-  phase: "generation" | "upload";
+  phase: "generation" | "upload" | "invalid_resource";
   message: string;
 };
 
@@ -39,22 +39,53 @@ type BatchResult = {
 };
 
 /**
- * Process a single candidate (throws on error)
+ * Handle generation failure for a candidate
+ * Marks invalid resources as non-podcastable and returns ProcessingError
+ */
+async function handleGenerationFailure(
+  result: GenerationResult,
+  candidate: ArticleCandidate,
+  index: number,
+  total: number
+): Promise<ProcessingError> {
+  if (result.success) {
+    // This should never happen as we only call this function when result.success is false
+    throw new Error("handleGenerationFailure called with successful result");
+  }
+  if (result.reason === "invalid_resource") {
+    // Handle invalid resource: mark as non-podcastable and track separately
+    warning(`⚠️  Invalid resource detected ${index + 1}/${total}: ${result.error.message}`);
+
+    // Mark item as non-podcastable in Monday.com
+    try {
+      await markItemAsNonPodcastable(candidate.id);
+    } catch (mondayErr) {
+      error(`Failed to mark item ${candidate.id} as non-podcastable: ${mondayErr}`);
+    }
+
+    return { url: candidate.sourceUrl, phase: "invalid_resource", message: result.error.message };
+  } else {
+    error(`❌ Failed ${index + 1}/${total}: ${result.error.message}`);
+    return { url: candidate.sourceUrl, phase: "generation", message: result.error.message };
+  }
+}
+
+/**
+ * Process a single candidate and return generation result
  */
 async function processSingleCandidate(
   candidate: ArticleCandidate,
   service: NotebookLMService
-): Promise<{ details: GeneratedPodcast; candidate: ArticleCandidate }> {
+): Promise<GenerationResult> {
   // Always navigate to main page before each item to ensure correct state
   await service.navigateToMainPage();
 
-  const result = await generatePodcast({
+  return await generatePodcast({
     sourceUrl: candidate.sourceUrl,
     existingNotebookUrl: candidate.generatedAudioLink,
     mondayItemId: candidate.id,
     service,
   });
-  return { details: result.details, candidate };
 }
 
 /**
@@ -71,14 +102,13 @@ async function processAudioReadyCandidates(
     const candidate = candidates[i];
     info(`Processing audio-ready ${i + 1}/${candidates.length}: ${candidate.sourceUrl}`);
 
-    try {
-      const result = await processSingleCandidate(candidate, service);
-      results.push(result);
+    const result = await processSingleCandidate(candidate, service);
+    if (result.success) {
+      results.push({ details: result.data.details, candidate });
       success(`✅ Generated audio-ready ${i + 1}/${candidates.length}`);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      errors.push({ url: candidate.sourceUrl, phase: "generation", message });
-      error(`❌ Failed audio-ready ${i + 1}/${candidates.length}: ${message}`);
+    } else {
+      const processingError = await handleGenerationFailure(result, candidate, i, candidates.length);
+      errors.push(processingError);
     }
   }
 
@@ -99,14 +129,13 @@ async function processNewGenerationCandidates(
     const candidate = candidates[i];
     info(`Processing new generation ${i + 1}/${candidates.length}: ${candidate.sourceUrl}`);
 
-    try {
-      const result = await processSingleCandidate(candidate, service);
-      results.push(result);
+    const result = await processSingleCandidate(candidate, service);
+    if (result.success) {
+      results.push({ details: result.data.details, candidate });
       success(`✅ Generated new ${i + 1}/${candidates.length}`);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      errors.push({ url: candidate.sourceUrl, phase: "generation", message });
-      error(`❌ Failed new generation ${i + 1}/${candidates.length}: ${message}`);
+    } else {
+      const processingError = await handleGenerationFailure(result, candidate, i, candidates.length);
+      errors.push(processingError);
     }
 
     // Add delay before next generation (but not after the last one)
@@ -257,11 +286,23 @@ function reportProcessingResults(results: BatchResult): void {
   success(`  🎵 Successful generations: ${successfulGenerations}/${totalCandidates}`);
   success(`  ⬆️  Successful uploads: ${successfulUploads}/${successfulGenerations}`);
 
-  if (errors.length > 0) {
-    error(`\n❌ Processing Errors (${errors.length} total):`);
+  // Filter errors by phase
+  const invalidResources = errors.filter((e) => e.phase === "invalid_resource");
+  const generationErrors = errors.filter((e) => e.phase === "generation");
+  const uploadErrors = errors.filter((e) => e.phase === "upload");
 
-    const generationErrors = errors.filter((e) => e.phase === "generation");
-    const uploadErrors = errors.filter((e) => e.phase === "upload");
+  // Report invalid resources separately
+  if (invalidResources.length > 0) {
+    warning(`\n⚠️  Invalid Resources (${invalidResources.length} total - marked as non-podcastable):`);
+    invalidResources.forEach((err) => {
+      warning(`    • ${err.url}`);
+    });
+  }
+
+  // Report other errors
+  const otherErrors = [...generationErrors, ...uploadErrors];
+  if (otherErrors.length > 0) {
+    error(`\n❌ Processing Errors (${otherErrors.length} total):`);
 
     if (generationErrors.length > 0) {
       error(`\n  🎵 Generation Failures (${generationErrors.length}):`);
@@ -276,7 +317,7 @@ function reportProcessingResults(results: BatchResult): void {
         error(`    • ${err.url}: ${err.message}`);
       });
     }
-  } else {
+  } else if (invalidResources.length === 0) {
     success(`\n🎉 All candidates processed successfully!`);
   }
 }
@@ -311,7 +352,9 @@ function logBatchStart(audioReady: ArticleCandidate[], regularToProcess: Article
   info(`  📋 Total candidates: ${totalCandidates}`);
   info(`  🔊 ${audioReady.length} Audio-ready: ${audioReady.map((c) => c.metadata?.title || c.name).join(", ")}`);
   info(
-    `  🆕 ${regularToProcess.length} New generations: ${regularToProcess.map((c) => c.metadata?.title || c.name).join(", ")}`
+    `  🆕 ${regularToProcess.length} New generations: ${regularToProcess
+      .map((c) => c.metadata?.title || c.name)
+      .join(", ")}`
   );
 }
 
