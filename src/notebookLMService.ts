@@ -14,6 +14,7 @@ const TITLE_DESC_WAIT_MS = 10_000;
 const TITLE_GENERATION_INITIAL_WAIT_MS = 5_000; // Initial wait for title generation
 const AUDIO_GENERATION_TIMEOUT_MS = 12 * 60 * 1000; // 12 minutes
 const AUDIO_OVERVIEW_BUTTON_TIMEOUT_MS = 10_000; // Shorter timeout for detecting invalid resources
+const POST_REFRESH_WAIT_MS = 2_000; // Wait after page refresh for UI to stabilize
 
 /**
  * Service for automating interactions with Google NotebookLM
@@ -204,12 +205,64 @@ export class NotebookLMService {
   }
 
   /**
+   * Wait for source loading to complete before interacting with buttons
+   * NotebookLM shows a spinner while processing the source URL
+   */
+  private async waitForSourceLoading(): Promise<void> {
+    info("Waiting for source loading to complete...");
+    const loadingSpinner = this.page.locator("mat-spinner");
+
+    // Check if spinner is visible first - if not, source is already loaded
+    const isSpinnerVisible = await loadingSpinner.isVisible().catch(() => false);
+    if (!isSpinnerVisible) {
+      success("Source already loaded (no spinner detected)");
+      return;
+    }
+
+    // Wait for spinner to disappear
+    await expect(loadingSpinner).not.toBeVisible({ timeout: AUDIO_OVERVIEW_BUTTON_TIMEOUT_MS });
+    success("Source loading complete (spinner disappeared)");
+  }
+
+  /**
+   * Click the Audio Overview button with retry mechanism
+   * Verifies that generation actually starts after each click attempt
+   * @param button The button locator to click
+   */
+  private async clickAudioOverviewWithRetry(button: Locator): Promise<void> {
+    const generatingText = this.page.getByText(/generating\s+audio\s+overview\.{3}/i);
+    const maxAttempts = 3;
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      await button.click();
+      info(`Click attempt ${attempt}/${maxAttempts} on Audio Overview button`);
+
+      try {
+        await expect(generatingText).toBeVisible({ timeout: 10_000 });
+        success("Detected 'generating audio overview...' signal");
+        return; // Success - generation started
+      } catch {
+        if (attempt === maxAttempts) {
+          // On final attempt, check for invalid resource before throwing
+          await this.throwIfInvalidResource();
+          throw new Error(`Audio generation did not start after ${maxAttempts} click attempts`);
+        }
+        info(`Generation didn't start after click attempt ${attempt}, retrying...`);
+        await this.page.waitForTimeout(1000);
+      }
+    }
+  }
+
+  /**
    * Triggers Studio Podcast generation and returns the current NotebookLM page URL
    * and the extracted title after generation has started. The caller is responsible
    * for persisting this URL externally (e.g., to Monday via updateItemWithNotebookLmAudioLinkAndTitle).
    */
   async generateStudioPodcast(): Promise<{ url: string; title: string }> {
     info("Starting to generate Studio Podcast...");
+
+    // Wait for source URL to finish loading (spinner disappears)
+    await this.waitForSourceLoading();
 
     // Audio Overview can appear in two locations:
     // 1. As a styled button outside studio panel (with .audio-overview-button class)
@@ -232,18 +285,8 @@ export class NotebookLMService {
     await expect(selectedButton).toBeVisible();
     await this.waitForEnabledAudioOverviewButton(selectedButton);
 
-    await selectedButton.click();
-
-    success(`Clicked on Audio Overview button: ${audioOverviewButton.toString()}`);
-
-    try {
-      await this.assertGenerationStarted();
-    } catch (err) {
-      // If generation didn't start, check if resource is invalid
-      await this.throwIfInvalidResource();
-      // If no invalid resource error, re-throw the original error
-      throw err;
-    }
+    // Click with retry - verifies generation actually starts
+    await this.clickAudioOverviewWithRetry(selectedButton);
 
     // Wait for and extract the NotebookLM-generated title
     const title = await this.waitForAndExtractTitle();
@@ -254,6 +297,7 @@ export class NotebookLMService {
 
   /**
    * Wait for and extract the NotebookLM-generated title after clicking Generate Audio
+   * Handles NotebookLM UI bug where title doesn't update until page refresh
    * @returns Promise with the extracted title
    */
   private async waitForAndExtractTitle(): Promise<string> {
@@ -271,20 +315,36 @@ export class NotebookLMService {
       timeout: TITLE_DESC_WAIT_MS,
     });
 
-    // Wait for meaningful title content (not "Untitled notebook")
-    await this.page.waitForFunction(
-      () => {
-        const element = document.querySelector(".notebook-title");
-        if (!element || !element.textContent) return false;
-        const title = element.textContent.trim();
-        return title && title !== "Untitled notebook";
-      },
-      {},
-      { timeout: TITLE_DESC_WAIT_MS }
-    );
+    // Check if title has been updated naturally (in case NotebookLM fixes UI bug)
+    const initialTitle = await titleElement.textContent();
+    const isStillUntitled = initialTitle?.trim() === "Untitled notebook";
 
+    if (isStillUntitled) {
+      // NotebookLM UI bug: title generated server-side but not displayed
+      // Refresh page once to trigger UI update
+      info("Title still shows 'Untitled notebook' - refreshing page to trigger UI update...");
+      await this.page.reload({ waitUntil: "domcontentloaded" });
+
+      // Wait for page to stabilize after refresh
+      await this.page.waitForTimeout(POST_REFRESH_WAIT_MS);
+
+      // Re-wait for title element after refresh
+      await titleElement.waitFor({
+        state: "visible",
+        timeout: TITLE_DESC_WAIT_MS,
+      });
+    }
+
+    // Extract the title (may still be "Untitled notebook" if server-side generation also failed)
     const title = await titleElement.textContent();
-    const cleanTitle = title?.trim() || "Untitled Podcast";
+    const cleanTitle = title?.trim();
+
+    // Use fallback only if title is empty or still "Untitled notebook"
+    if (!cleanTitle || cleanTitle === "Untitled notebook") {
+      info("Title extraction failed or still 'Untitled notebook' - using fallback");
+      return "Untitled Podcast";
+    }
+
     success(`Extracted NotebookLM-generated title: ${cleanTitle}`);
     return cleanTitle;
   }
@@ -331,16 +391,5 @@ export class NotebookLMService {
     const [title, description] = await Promise.all([this.extractPodcastTitle(), this.extractPodcastDescription()]);
 
     return { title, description };
-  }
-
-  /**
-   * Assert that Studio Podcast generation has started by locating a visible element
-   * containing the text "generating audio overview..." (case-insensitive).
-   */
-  private async assertGenerationStarted(): Promise<void> {
-    info("Asserting Studio Podcast generation has started...");
-    const generatingText = this.page.getByText(/generating\s+audio\s+overview\.{3}/i);
-    await expect(generatingText).toBeVisible({ timeout: SELECTOR_TIMEOUT_MS });
-    success("Detected 'generating audio overview...' signal");
   }
 }
