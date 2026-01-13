@@ -81,20 +81,20 @@ export async function extractMetadataBatch(urls: string[]): Promise<Map<string, 
 }
 
 /**
- * Build links section for podcast description
+ * Build header section for podcast description with Monday item info and links
  * @param sourceUrl Original article URL
  * @param mondayItemId Optional Monday board item ID
- * @returns Formatted links section string
+ * @param mondayItemName Optional Monday board item name
+ * @returns Formatted header section string
  */
-function buildLinksSection(sourceUrl: string, mondayItemId?: string): string {
-  const links = [`🔗 Original article: ${sourceUrl}`];
+function buildHeaderSection(sourceUrl: string, mondayItemId?: string, mondayItemName?: string): string {
+  const lines: string[] = [];
 
   if (mondayItemId) {
     try {
       const mondayItemUrl = constructMondayItemUrl(mondayItemId);
-      links.push(`📋 Monday item: ${mondayItemUrl}`);
+      lines.push(`📋 Monday item: ${mondayItemUrl}`);
     } catch (err) {
-      // Silently handle Monday URL construction errors for graceful degradation
       warning(
         `Failed to construct Monday item URL for item ${mondayItemId}: ${
           err instanceof Error ? err.message : String(err)
@@ -103,14 +103,21 @@ function buildLinksSection(sourceUrl: string, mondayItemId?: string): string {
     }
   }
 
-  return links.join("\n");
+  if (mondayItemName) {
+    lines.push(`📌 ${mondayItemName}`);
+  }
+
+  lines.push(`🔗 Original article: ${sourceUrl}`);
+
+  return lines.join("\n");
 }
 
 export function finalizePodcastDetails(
   urlMetadata: ArticleMetadata,
   notebookLmDetails: { title: string; description: string },
   sourceUrl: string,
-  mondayItemId?: string
+  mondayItemId?: string,
+  mondayItemName?: string
 ): { title: string; description: string } {
   info(
     `Finalizing podcast details for "${urlMetadata.title}" (Content Type: ${urlMetadata.contentType}, ` +
@@ -126,13 +133,11 @@ export function finalizePodcastDetails(
     throw new Error(errMsg);
   }
 
-  const metadataDetailsStr = `
-  Code content percentage: ${urlMetadata.codeContentPercentage}%
-  Total text length: ${urlMetadata.totalTextLength} characters
-  `;
+  const metadataDetailsStr = `Code content percentage: ${urlMetadata.codeContentPercentage}%
+Total text length: ${urlMetadata.totalTextLength} characters`;
 
-  const linksSection = buildLinksSection(sourceUrl, mondayItemId);
-  const finalDescription = `${notebookLmDescription}\n\n==============\n\n${metadataDetailsStr}\n${linksSection}`;
+  const headerSection = buildHeaderSection(sourceUrl, mondayItemId, mondayItemName);
+  const finalDescription = `${headerSection}\n\n==============\n\n${notebookLmDescription}\n\n${metadataDetailsStr}`;
 
   return {
     title: notebookLmDetails.title,

@@ -209,7 +209,8 @@ async function processSingleUpload(
     details.metadata,
     details.notebookLmDetails,
     candidate.sourceUrl,
-    candidate.id
+    candidate.id,
+    candidate.name
   );
 
   const converted = await convertToMp3(details, { outputDir: DEFAULT_DOWNLOADS_DIR });
