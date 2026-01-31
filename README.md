@@ -68,6 +68,16 @@ yarn generate-podcasts
 
 - By default, processes Monday board candidates (fitness > 0, unpublished only), sorts by fitness desc, and takes top 3 (NotebookLM daily limit). Fails fast on errors.
 
+### Clean up old NotebookLM projects
+
+`src/scripts/notebookLMCleanup.js` is a browser console script that deletes NotebookLM projects older than 1 week.
+
+1. Navigate to https://notebooklm.google.com/
+2. Open browser DevTools (F12 or Cmd+Option+I)
+3. Go to the Console tab
+4. Copy the contents of `src/scripts/notebookLMCleanup.js` and paste into the console
+5. Press Enter to run
+
 ## Architecture
 
 ```mermaid
