@@ -13,3 +13,6 @@ logs/
 .env.*
 # Ignore all .env files, but not .env.example
 !.env.example
+
+# Python virtual environment for notebooklm-py CLI
+.venv/

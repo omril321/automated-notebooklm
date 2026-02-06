@@ -6,8 +6,8 @@ Important: This project is a concept prototype intended for educational purposes
 
 ## Features
 
-- Generate NotebookLM studio podcast for a given URL and download audio
-- Convert WAV → MP3 using FFmpeg
+- Generate NotebookLM studio podcast for a given URL using `notebooklm-py` CLI
+- Download MP3 audio directly from NotebookLM
 - Upload MP3 to RedCircle as an episode (optional)
 - Monday.com integration to prepare items and select top candidates (optional)
 
@@ -26,18 +26,28 @@ cd automated-notebooklm
 yarn install
 ```
 
-3. Create a `.env` file with your Google credentials:
+3. Set up the NotebookLM CLI:
+
+```bash
+# Install notebooklm-py CLI (requires Python 3.10+ and uv)
+./scripts/setup-nlm.sh
+
+# Authenticate with Google (opens browser for OAuth)
+./scripts/nlm login
+
+# Verify setup
+./scripts/nlm list
+```
+
+4. Create a `.env` file for optional integrations:
 
 ```bash
 cp .env.example .env
 ```
 
-4. Edit the `.env` file with your Google email and password:
+5. Edit the `.env` file (all settings are optional):
 
 ```
-GOOGLE_USER_EMAIL=your_email@gmail.com
-GOOGLE_USER_PASSWORD=your_password
-
 # Optional: RedCircle upload
 RED_CIRCLE_USER=
 RED_CIRCLE_PASSWORD=
@@ -83,11 +93,10 @@ yarn generate-podcasts
 ```mermaid
 flowchart TD
   A["Input: URL(s)"] --> B["Article Metadata Service (Cheerio)<br/>- Fetch HTML<br/>- Metrics: code% / text length<br/>- Detect video"]
-  B --> C["NotebookLM (Playwright)<br/>- Generate podcast for URL<br/>- Download audio (WAV)"]
-  C --> D["Audio Conversion (FFmpeg)<br/>- WAV → MP3<br/>- Save to downloads/"]
-  D --> E["Finalize Metadata<br/>- Title/Description from NotebookLM<br/>- Append analysis details"]
-  E --> F["RedCircle (Playwright)<br/>- Upload audio file as an episode"]
-  F --> G["Output: Podcast URL"]
+  B --> C["NotebookLM CLI (notebooklm-py)<br/>- Generate podcast for URL<br/>- Download audio (MP3)"]
+  C --> D["Finalize Metadata<br/>- Title/Description from NotebookLM<br/>- Append analysis details"]
+  D --> E["RedCircle (Playwright)<br/>- Upload audio file as an episode"]
+  E --> F["Output: Podcast URL"]
 
   subgraph MondayIntegration["Optional: Monday.com Integration"]
     direction TB
@@ -106,28 +115,27 @@ flowchart TD
 
 ## Security Notes
 
-- Your Google credentials are stored only in your local `.env` file
+- Google authentication is handled via browser-based OAuth through the CLI
+- No Google credentials are stored in the `.env` file
 - The `.env` file is ignored by git and will not be committed
-- Consider using an app password for better security if your account has 2FA enabled
 
 ## Requirements
 
 - Node.js >= 24.4 and Yarn
-- FFmpeg installed (with libmp3lame)
-- Google account (automation may not work with 2FA)
-- Chrome browser installed (Playwright uses Chrome channel)
+- Python 3.10+ with `uv` package manager (for notebooklm-py CLI)
+- Google account (authenticate via `./scripts/nlm login`)
+- Chrome browser installed (Playwright uses Chrome channel for RedCircle upload)
 - RedCircle account with an existing podcast (required for upload)
 
 ## Limitations
 
-- UI brittleness: Selectors depend on current Google NotebookLM and RedCircle UIs and may break as sites change.
-- Anti-automation measures: The browser setup includes anti-detection tweaks that may stop working and may violate Terms of Use.
+- CLI API stability: The `notebooklm-py` CLI uses undocumented APIs that may change without notice.
+- UI brittleness: RedCircle upload selectors may break as the site changes.
 - Long waits: NotebookLM podcast generation can take 10–12 minutes; flows use generous timeouts and fail fast on errors (no retries).
-- Codec availability: FFmpeg must include libmp3lame; system-level codec differences can cause failures.
-- Daily limits: NotebookLM appears to limit podcast generations; Monday integration selects top 3 candidates per run by design.
+- Daily limits: NotebookLM limits podcast generations (typically 3 per day); Monday integration respects this limit by design.
 - Monday board size: The current query caps at 500 items and throws if exactly 500 are returned; pagination or filtered queries are required for larger boards.
-- Network variability: Captchas, rate limits, or account protections may interrupt automation.
-- Account risk: Do not run with primary accounts; review and comply with Google and RedCircle Terms of Use before any usage.
+- Network variability: Rate limits or account protections may interrupt automation.
+- Account risk: Review and comply with Google and RedCircle Terms of Use before any usage.
 
 ## License
 

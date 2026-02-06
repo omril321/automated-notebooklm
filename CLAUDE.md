@@ -6,8 +6,8 @@ This project automates Google NotebookLM to generate podcast audio from URLs, co
 
 **Automated NotebookLM** is a TypeScript automation pipeline that:
 
-- Generates NotebookLM studio podcasts from URLs using Playwright automation
-- Converts WAV audio to high-quality MP3 using FFmpeg
+- Generates NotebookLM studio podcasts from URLs using `notebooklm-py` CLI
+- Downloads MP3 audio directly from NotebookLM
 - Uploads MP3 episodes to RedCircle (optional)
 - Integrates with Monday.com boards for candidate management with intelligent scoring
 - Supports both new podcast generation and resuming from existing NotebookLM URLs
@@ -15,9 +15,9 @@ This project automates Google NotebookLM to generate podcast audio from URLs, co
 ## Architecture
 
 ```
-Monday.com Board → Candidate Selection → NotebookLM Generation → Audio Conversion → RedCircle Upload
-       ↓                    ↓                     ↓                      ↓                ↓
-  Metadata Extraction → Fitness Scoring → Playwright Automation → FFmpeg → Browser Upload
+Monday.com Board → Candidate Selection → NotebookLM Generation → Audio Download → RedCircle Upload
+       ↓                    ↓                     ↓                    ↓                ↓
+  Metadata Extraction → Fitness Scoring → CLI (notebooklm-py)  →   MP3 Direct → Browser Upload
 ```
 
 ## Key Directories
@@ -36,8 +36,9 @@ Monday.com Board → Candidate Selection → NotebookLM Generation → Audio Con
 ### Audio Pipeline
 
 - `singleRunGeneration.ts` - Main podcast generation orchestration
-- `notebookLMService.ts` - Playwright automation for NotebookLM interface
-- `audioConversionService.ts` - FFmpeg WAV→MP3 conversion with quality settings
+- `services/notebookLMCliService.ts` - CLI wrapper for notebooklm-py
+- `services/notebookLMAdapter.ts` - Adapter interface for NotebookLM operations
+- `audioConversionService.ts` - MP3 passthrough (CLI provides MP3 directly)
 - `redCircleService.ts` - Automated podcast upload to RedCircle platform
 
 ### Monday.com Integration
@@ -82,10 +83,6 @@ yarn test:coverage  # Coverage report
 Required `.env` variables:
 
 ```bash
-# Google credentials (required for NotebookLM automation)
-GOOGLE_USER_EMAIL=your_email@gmail.com
-GOOGLE_USER_PASSWORD=your_password
-
 # Monday.com integration (optional - enables board processing)
 MONDAY_API_TOKEN=your_personal_api_token
 MONDAY_BOARD_URL=https://yourcompany.monday.com/boards/123456789
@@ -100,17 +97,30 @@ PUBLISHED_PODCAST_NAME="Your Podcast Name"
 ## System Dependencies
 
 - **Node.js >= 24.4** with Yarn package manager
-- **FFmpeg** with libmp3lame codec for high-quality MP3 conversion
-- **Chrome browser** for Playwright automation (automatically detected)
-- **Google account** preferably without 2FA for reliable automation
+- **Python 3.10+** with `uv` package manager for notebooklm-py CLI
+- **Chrome browser** for RedCircle upload
+- **Google account** for NotebookLM access
 - **RedCircle account** with existing podcast (required only for upload feature)
+
+### CLI Setup
+
+```bash
+# One-time setup
+./scripts/setup-nlm.sh
+
+# Authenticate with Google
+./scripts/nlm login
+
+# Verify setup
+./scripts/nlm list
+```
 
 ## Technology Stack
 
 - **Language**: TypeScript with functional programming patterns
 - **Package Manager**: Yarn
-- **Browser Automation**: Playwright (Chrome channel)
-- **Audio Processing**: fluent-ffmpeg with quality optimization
+- **Browser Automation**: Playwright (Chrome channel) for RedCircle upload
+- **NotebookLM**: notebooklm-py CLI for podcast generation
 - **Testing**: Vitest 3.2.4 with UI dashboard and coverage
 - **Web Scraping**: Cheerio for metadata extraction
 - **Configuration**: dotenv for environment management
@@ -149,7 +159,6 @@ The system expects these Monday.com board columns:
 
 Comprehensive test suite using Vitest:
 
-- **Real Integration Testing**: Tests actual FFmpeg, not mocked behavior
 - **Service Testing**: All core services have dedicated test suites
 - **Configuration Testing**: Monday.com setup validation
 - **Content Analysis Testing**: Metadata extraction and scoring
@@ -180,16 +189,13 @@ Key test files:
 
 - Fail-fast approach with early validation
 - Context-rich error messages for debugging
-- Debug screenshots for browser automation failures
 - Comprehensive logging with structured data
 
 ## Production Features
 
 ### Audio Quality Standards
 
-- **320kbps bitrate** for optimal podcast quality
-- **44.1kHz sample rate** (CD quality)
-- **Best quality encoding** settings for smallest file size
+- **MP3 format** directly from NotebookLM CLI
 - **Consistent metadata** embedding for podcast platforms
 
 ### Reliability & Performance
@@ -198,23 +204,21 @@ Key test files:
 - **Batch processing** (10 URLs at a time for metadata)
 - **Audio-ready optimization** (prioritizes existing NotebookLM content)
 - **Generous timeouts** for NotebookLM generation (10-12 minutes)
-- **Anti-detection measures** for browser automation stability
 
 ### Monitoring & Debugging
 
 - **Structured logging** throughout the pipeline
-- **Debug screenshots** on automation failures
 - **Progress tracking** for batch operations
 - **Error reporting** with full context and stack traces
 - **Performance metrics** for optimization
 
 ## Current Limitations
 
-- **UI Dependency**: Relies on current Google NotebookLM and RedCircle interfaces
 - **Daily Limits**: NotebookLM restricts podcast generations (typically 3 per day)
-- **Authentication**: Works best with non-2FA Google accounts
-- **Browser Requirements**: Requires stable Chrome installation
+- **Authentication**: CLI uses browser-based OAuth via `./scripts/nlm login`
+- **Browser Requirements**: Chrome needed for RedCircle upload
 - **Network Sensitivity**: Captchas or rate limits may interrupt automation
+- **CLI API Stability**: notebooklm-py uses undocumented APIs that may change
 
 ## Main Operations
 
@@ -238,19 +242,25 @@ This command:
 1. **Board Analysis**: Fetches and filters Monday.com board items
 2. **Candidate Prioritization**: Ranks by fitness score and audio-ready status
 3. **Metadata Processing**: Extracts and analyzes content for each URL
-4. **Podcast Generation**: Automates NotebookLM for audio creation
-5. **Audio Processing**: Converts WAV to high-quality MP3
+4. **Podcast Generation**: Uses notebooklm-py CLI for audio creation
+5. **Audio Download**: Downloads MP3 directly from NotebookLM
 6. **Publishing**: Uploads to RedCircle and updates Monday.com board
 
 ## File Organization
 
 ```
 src/
-├── services/           # Content analysis and metadata extraction
+├── services/           # Content analysis, NotebookLM CLI service, metadata extraction
+│   ├── notebookLMCliService.ts   # CLI wrapper for notebooklm-py
+│   └── notebookLMAdapter.ts      # Adapter interface for NotebookLM operations
 ├── monday/            # Monday.com API integration layer
 ├── scripts/           # CLI entry points
 ├── utils/             # Shared utility functions
 └── __tests__/         # Test configuration
+
+scripts/               # Shell scripts for CLI setup
+├── setup-nlm.sh       # Python environment setup script
+└── nlm                # Wrapper for notebooklm-py CLI
 
 Key orchestration files:
 - mondayBatchOrchestrator.ts    # Main batch processing logic
@@ -260,13 +270,14 @@ Key orchestration files:
 
 ## Troubleshooting
 
-### FFmpeg Issues
+### CLI Issues
 
-- Ensure FFmpeg includes libmp3lame codec: `ffmpeg -codecs | grep mp3`
-- Check system PATH includes FFmpeg binary
-- Verify temp directory permissions for audio processing
+- **Not installed**: Run `./scripts/setup-nlm.sh` to set up Python environment
+- **Not authenticated**: Run `./scripts/nlm login` to authenticate with Google
+- **Command not found**: Ensure `uv` is installed (`brew install uv` or `curl -LsSf https://astral.sh/uv/install.sh | sh`)
+- **Rate limited**: NotebookLM limits to ~3 new generations per day
 
-### Browser Automation
+### Browser Automation (RedCircle Upload)
 
 - Update Playwright browsers: `npx playwright install chrome`
 - Check for captchas or account restrictions

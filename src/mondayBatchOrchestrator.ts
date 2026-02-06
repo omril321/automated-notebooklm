@@ -1,5 +1,5 @@
-import { generatePodcast, initializeNotebookLmAutomation, GenerationResult } from "./singleRunGeneration";
-import { NotebookLMService } from "./notebookLMService";
+import { generatePodcastWithAdapter, initializeNotebookLmWithAdapter, GenerationResult } from "./singleRunGeneration";
+import { INotebookLMAdapter } from "./services/notebookLMAdapter";
 import { convertToMp3 } from "./audioConversionService";
 import { uploadEpisode, initializePersistentRedCircleSession, navigateToMainPodcastPage } from "./redCircleService";
 import { error, info, success, warning } from "./logger";
@@ -13,9 +13,6 @@ import { Page } from "playwright";
 const DEFAULT_DOWNLOADS_DIR = "./downloads";
 const NEW_GENERATION_DELAY_MS = 10_000; // 10 seconds between new generations
 
-/**
- * Sleep for specified milliseconds
- */
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -38,10 +35,6 @@ type BatchResult = {
   errors: ProcessingError[];
 };
 
-/**
- * Handle generation failure for a candidate
- * Marks invalid resources as non-podcastable and returns ProcessingError
- */
 async function handleGenerationFailure(
   result: GenerationResult,
   candidate: ArticleCandidate,
@@ -49,14 +42,11 @@ async function handleGenerationFailure(
   total: number
 ): Promise<ProcessingError> {
   if (result.success) {
-    // This should never happen as we only call this function when result.success is false
     throw new Error("handleGenerationFailure called with successful result");
   }
   if (result.reason === "invalid_resource") {
-    // Handle invalid resource: mark as non-podcastable and track separately
     warning(`⚠️  Invalid resource detected ${index + 1}/${total}: ${result.error.message}`);
 
-    // Mark item as non-podcastable in Monday.com
     try {
       await markItemAsNonPodcastable(candidate.id);
     } catch (mondayErr) {
@@ -70,30 +60,27 @@ async function handleGenerationFailure(
   }
 }
 
-/**
- * Process a single candidate and return generation result
- */
+// ============================================================================
+// CLI-based processing
+// ============================================================================
+
 async function processSingleCandidate(
   candidate: ArticleCandidate,
-  service: NotebookLMService
+  adapter: INotebookLMAdapter
 ): Promise<GenerationResult> {
-  // Always navigate to main page before each item to ensure correct state
-  await service.navigateToMainPage();
+  await adapter.navigateToMainPage();
 
-  return await generatePodcast({
+  return await generatePodcastWithAdapter({
     sourceUrl: candidate.sourceUrl,
     existingNotebookUrl: candidate.generatedAudioLink,
     mondayItemId: candidate.id,
-    service,
+    adapter,
   });
 }
 
-/**
- * Process audio-ready candidates (no delays)
- */
 async function processAudioReadyCandidates(
   candidates: ArticleCandidate[],
-  service: NotebookLMService
+  adapter: INotebookLMAdapter
 ): Promise<GenerationResults> {
   const results: Array<{ details: GeneratedPodcast; candidate: ArticleCandidate }> = [];
   const errors: ProcessingError[] = [];
@@ -102,7 +89,7 @@ async function processAudioReadyCandidates(
     const candidate = candidates[i];
     info(`Processing audio-ready ${i + 1}/${candidates.length}: ${candidate.sourceUrl}`);
 
-    const result = await processSingleCandidate(candidate, service);
+    const result = await processSingleCandidate(candidate, adapter);
     if (result.success) {
       results.push({ details: result.data.details, candidate });
       success(`✅ Generated audio-ready ${i + 1}/${candidates.length}`);
@@ -115,12 +102,9 @@ async function processAudioReadyCandidates(
   return { results, errors };
 }
 
-/**
- * Process new generation candidates (with delays)
- */
 async function processNewGenerationCandidates(
   candidates: ArticleCandidate[],
-  service: NotebookLMService
+  adapter: INotebookLMAdapter
 ): Promise<GenerationResults> {
   const results: Array<{ details: GeneratedPodcast; candidate: ArticleCandidate }> = [];
   const errors: ProcessingError[] = [];
@@ -129,7 +113,7 @@ async function processNewGenerationCandidates(
     const candidate = candidates[i];
     info(`Processing new generation ${i + 1}/${candidates.length}: ${candidate.sourceUrl}`);
 
-    const result = await processSingleCandidate(candidate, service);
+    const result = await processSingleCandidate(candidate, adapter);
     if (result.success) {
       results.push({ details: result.data.details, candidate });
       success(`✅ Generated new ${i + 1}/${candidates.length}`);
@@ -138,7 +122,6 @@ async function processNewGenerationCandidates(
       errors.push(processingError);
     }
 
-    // Add delay before next generation (but not after the last one)
     if (i < candidates.length - 1) {
       info(`⏱️  Waiting ${NEW_GENERATION_DELAY_MS / 1000} seconds before next generation...`);
       await sleep(NEW_GENERATION_DELAY_MS);
@@ -148,22 +131,15 @@ async function processNewGenerationCandidates(
   return { results, errors };
 }
 
-/**
- * Execute NotebookLM processing with logged-in service
- */
 async function executeNotebookLMProcessing(
   audioReady: ArticleCandidate[],
   regular: ArticleCandidate[],
-  service: NotebookLMService
+  adapter: INotebookLMAdapter
 ): Promise<GenerationResults> {
-  await service.loginToGoogle();
   info("✅ NotebookLM session initialized");
 
-  // Process audio-ready candidates (no delays)
-  const audioResults = await processAudioReadyCandidates(audioReady, service);
-
-  // Process new generation candidates (with delays)
-  const regularResults = await processNewGenerationCandidates(regular, service);
+  const audioResults = await processAudioReadyCandidates(audioReady, adapter);
+  const regularResults = await processNewGenerationCandidates(regular, adapter);
 
   return {
     results: [...audioResults.results, ...regularResults.results],
@@ -171,9 +147,6 @@ async function executeNotebookLMProcessing(
   };
 }
 
-/**
- * Process NotebookLM generations using persistent browser session with smart delays
- */
 async function processNotebookLMGenerations(
   audioReady: ArticleCandidate[],
   regular: ArticleCandidate[]
@@ -186,25 +159,25 @@ async function processNotebookLMGenerations(
   info(`  🔊 ${audioReady.length} audio-ready candidates (no delays)`);
   info(`  🆕 ${regular.length} new generation candidates (with delays)`);
 
-  const { browser: notebookBrowser, service } = await initializeNotebookLmAutomation();
+  const { adapter, cleanup } = await initializeNotebookLmWithAdapter();
 
   try {
-    return await executeNotebookLMProcessing(audioReady, regular, service);
+    return await executeNotebookLMProcessing(audioReady, regular, adapter);
   } finally {
-    await notebookBrowser.close();
-    info("🚪 NotebookLM browser session closed");
+    await cleanup();
+    info("🚪 NotebookLM session closed");
   }
 }
 
-/**
- * Process a single upload (throws on error)
- */
+// ============================================================================
+// Upload processing (uses Playwright for RedCircle)
+// ============================================================================
+
 async function processSingleUpload(
   details: GeneratedPodcast,
   candidate: ArticleCandidate,
   page: Page
 ): Promise<string> {
-  // Convert to MP3
   const { title, description } = finalizePodcastDetails(
     details.metadata,
     details.notebookLmDetails,
@@ -215,18 +188,13 @@ async function processSingleUpload(
 
   const converted = await convertToMp3(details, { outputDir: DEFAULT_DOWNLOADS_DIR });
 
-  // Upload using persistent session
   const uploaded = await uploadEpisode(converted, title, description, page);
 
-  // Update Monday.com
   await updateItemWithGeneratedPodcastUrl(candidate.id, uploaded.podcastUrl);
 
   return title;
 }
 
-/**
- * Process uploads batch with proper resource cleanup
- */
 async function processUploadsBatch(
   generationResults: Array<{ details: GeneratedPodcast; candidate: ArticleCandidate }>,
   page: Page
@@ -238,7 +206,6 @@ async function processUploadsBatch(
     info(`Uploading ${i + 1}/${generationResults.length}: ${candidate.sourceUrl}`);
 
     try {
-      // Always navigate to main podcast page before each upload to ensure correct state
       await navigateToMainPodcastPage(page);
 
       const title = await processSingleUpload(details, candidate, page);
@@ -253,9 +220,6 @@ async function processUploadsBatch(
   return errors;
 }
 
-/**
- * Process RedCircle uploads using persistent browser session
- */
 async function processRedCircleUploads(
   generationResults: Array<{ details: GeneratedPodcast; candidate: ArticleCandidate }>
 ): Promise<ProcessingError[]> {
@@ -276,9 +240,10 @@ async function processRedCircleUploads(
   }
 }
 
-/**
- * Report comprehensive processing results with detailed error information
- */
+// ============================================================================
+// Reporting and utilities
+// ============================================================================
+
 function reportProcessingResults(results: BatchResult): void {
   const { totalCandidates, successfulGenerations, successfulUploads, errors } = results;
 
@@ -287,12 +252,10 @@ function reportProcessingResults(results: BatchResult): void {
   success(`  🎵 Successful generations: ${successfulGenerations}/${totalCandidates}`);
   success(`  ⬆️  Successful uploads: ${successfulUploads}/${successfulGenerations}`);
 
-  // Filter errors by phase
   const invalidResources = errors.filter((e) => e.phase === "invalid_resource");
   const generationErrors = errors.filter((e) => e.phase === "generation");
   const uploadErrors = errors.filter((e) => e.phase === "upload");
 
-  // Report invalid resources separately
   if (invalidResources.length > 0) {
     warning(`\n⚠️  Invalid Resources (${invalidResources.length} total - marked as non-podcastable):`);
     invalidResources.forEach((err) => {
@@ -300,7 +263,6 @@ function reportProcessingResults(results: BatchResult): void {
     });
   }
 
-  // Report other errors
   const otherErrors = [...generationErrors, ...uploadErrors];
   if (otherErrors.length > 0) {
     error(`\n❌ Processing Errors (${otherErrors.length} total):`);
@@ -323,9 +285,6 @@ function reportProcessingResults(results: BatchResult): void {
   }
 }
 
-/**
- * Get candidates ready for processing after applying rate limits
- */
 function partitionCandidates(
   candidates: ArticleCandidate[],
   remainingSlots: number
@@ -344,9 +303,6 @@ function partitionCandidates(
   return { audioReady, regularToProcess };
 }
 
-/**
- * Log batch processing start information
- */
 function logBatchStart(audioReady: ArticleCandidate[], regularToProcess: ArticleCandidate[]): void {
   const totalCandidates = audioReady.length + regularToProcess.length;
   info(`\n🚀 Starting optimized batch processing:`);
@@ -357,11 +313,9 @@ function logBatchStart(audioReady: ArticleCandidate[], regularToProcess: Article
       .map((c) => c.metadata?.title || c.name)
       .join(", ")}`
   );
+  info(`  🔧 Using CLI-based NotebookLM (notebooklm-py)`);
 }
 
-/**
- * Process all candidates in two phases: generation then upload
- */
 async function processCandidatesPipeline(
   audioReady: ArticleCandidate[],
   regular: ArticleCandidate[]
@@ -388,10 +342,9 @@ async function processCandidatesPipeline(
 export async function generateAndUploadFromMondayBoardCandidates(): Promise<void> {
   info("🔍 Fetching podcast candidates from Monday board...");
 
-  const candidates = await getPodcastCandidates();
+  const candidates = await getPodcastCandidates(3);
   success(`📋 Found ${candidates.length} podcast candidates`);
 
-  // Early return: no candidates
   if (candidates.length === 0) {
     info(
       "🎯 No valid podcast candidates found. Make sure your Monday board view contains articles with valid URLs and empty podcast link fields."
@@ -402,7 +355,6 @@ export async function generateAndUploadFromMondayBoardCandidates(): Promise<void
   const remainingSlots = await audioGenerationTracker.validateRateLimit();
   const { audioReady, regularToProcess } = partitionCandidates(candidates, remainingSlots);
 
-  // Early return: nothing to process after rate limiting
   if ([...audioReady, ...regularToProcess].length === 0) {
     info("🎯 No candidates to process after rate limiting");
     return;

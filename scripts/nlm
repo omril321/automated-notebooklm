@@ -1,0 +1,20 @@
+#!/bin/bash
+#
+# Wrapper script for notebooklm-py CLI
+# Uses the project-local virtual environment
+#
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+VENV_DIR="$PROJECT_ROOT/.venv"
+NLM_BIN="$VENV_DIR/bin/notebooklm"
+
+if [ ! -f "$NLM_BIN" ]; then
+    echo "❌ Error: notebooklm-py is not installed."
+    echo ""
+    echo "Run the setup script first:"
+    echo "  ./scripts/setup-nlm.sh"
+    exit 1
+fi
+
+"$NLM_BIN" "$@"

@@ -9,7 +9,7 @@ const DOWNLOADS_DIR_NAME = "downloads";
 const DEFAULT_LOCALE = "en-US";
 
 /**
- * Browser Service - Browser initialization service for NotebookLM automation
+ * Browser Service - Browser initialization service for RedCircle upload
  */
 export type BrowserOptions = {
   headless?: boolean;

@@ -1,7 +1,8 @@
 import ffmpeg, { FfmpegCommand, Codec } from "fluent-ffmpeg";
+import { promises as fs } from "fs";
 import { info, success, error } from "./logger";
 import { GeneratedPodcast, ConvertedPodcast, toConvertedPodcast } from "./types";
-import { generateOutputPath, verifyWavDownload } from "./downloadUtils";
+import { generateOutputPath } from "./downloadUtils";
 
 type ConversionOptions = {
   outputPath?: string;
@@ -27,8 +28,15 @@ const DEFAULT_SAMPLE_RATE = 44100; // CD quality
 const DEFAULT_OUTPUT_DIR = "./downloads";
 
 /**
- * Convert a WAV file to high-quality MP3
- * @param podcast Generated podcast metadata containing WAV file path
+ * Check if the audio file is already in MP3 format
+ */
+function isAlreadyMp3(filePath: string): boolean {
+  return filePath.toLowerCase().endsWith(".mp3");
+}
+
+/**
+ * Convert audio to high-quality MP3 (or pass through if already MP3)
+ * @param podcast Generated podcast metadata containing audio file path
  * @param options Conversion options including output path and quality settings
  * @returns Promise with converted podcast metadata
  */
@@ -36,6 +44,32 @@ export async function convertToMp3(
   podcast: GeneratedPodcast,
   options: ConversionOptions = {}
 ): Promise<ConvertedPodcast> {
+  const inputPath = podcast.wavPath; // May be WAV or MP3 depending on source
+
+  // If already MP3 (CLI path), skip conversion
+  if (isAlreadyMp3(inputPath)) {
+    info("Audio is already in MP3 format, skipping conversion");
+
+    // If a specific output path was requested, copy to that location
+    if (options.outputPath && options.outputPath !== inputPath) {
+      await fs.copyFile(inputPath, options.outputPath);
+      success(`Copied MP3 to: ${options.outputPath}`);
+      return toConvertedPodcast(podcast, options.outputPath);
+    }
+
+    // If outputDir specified, generate path there
+    if (options.outputDir) {
+      const outputPath = generateOutputPath(podcast.metadata.title, options.outputDir);
+      await fs.copyFile(inputPath, outputPath);
+      success(`Copied MP3 to: ${outputPath}`);
+      return toConvertedPodcast(podcast, outputPath);
+    }
+
+    // Otherwise use the input path as-is
+    return toConvertedPodcast(podcast, inputPath);
+  }
+
+  // WAV file (Playwright path) - need to convert
   await validateFfmpegInstallation();
 
   // Determine output path - either from options or generate from title
@@ -43,7 +77,7 @@ export async function convertToMp3(
     options.outputPath || generateOutputPath(podcast.metadata.title, options.outputDir || DEFAULT_OUTPUT_DIR);
 
   // Convert the file
-  await convertWavToMp3(podcast.wavPath, { ...options, outputPath });
+  await convertWavToMp3(inputPath, { ...options, outputPath });
 
   // Return metadata in converted stage
   return toConvertedPodcast(podcast, outputPath);

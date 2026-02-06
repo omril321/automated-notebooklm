@@ -56,7 +56,7 @@ const DEFAULT_PAGE_TIMEOUT_MS = 30_000;
 const EPISODE_PROCESSING_TIMEOUT_MS = 60_000;
 
 async function initializeRedCircleAutomation() {
-  const { browser, context } = await initializeBrowser();
+  const { browser, context } = await initializeBrowser({ headless: true });
 
   const page = await context.newPage();
   page.setDefaultTimeout(DEFAULT_PAGE_TIMEOUT_MS);
