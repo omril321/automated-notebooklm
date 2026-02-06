@@ -8,6 +8,7 @@ import { getPodcastCandidates, updateItemWithGeneratedPodcastUrl, markItemAsNonP
 import { audioGenerationTracker } from "./services/audioGenerationTrackingService";
 import { finalizePodcastDetails } from "./services/articleMetadataService";
 import { ArticleCandidate } from "./monday/types";
+import { loadPodcastInstructions } from "./podcastConfig";
 import { Page } from "playwright";
 
 const DEFAULT_DOWNLOADS_DIR = "./downloads";
@@ -178,12 +179,15 @@ async function processSingleUpload(
   candidate: ArticleCandidate,
   page: Page
 ): Promise<string> {
+  const instructions = loadPodcastInstructions();
+
   const { title, description } = finalizePodcastDetails(
     details.metadata,
     details.notebookLmDetails,
     candidate.sourceUrl,
     candidate.id,
-    candidate.name
+    candidate.name,
+    instructions
   );
 
   const converted = await convertToMp3(details, { outputDir: DEFAULT_DOWNLOADS_DIR });

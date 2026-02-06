@@ -117,7 +117,8 @@ export function finalizePodcastDetails(
   notebookLmDetails: { title: string; description: string },
   sourceUrl: string,
   mondayItemId?: string,
-  mondayItemName?: string
+  mondayItemName?: string,
+  instructions?: string
 ): { title: string; description: string } {
   info(
     `Finalizing podcast details for "${urlMetadata.title}" (Content Type: ${urlMetadata.contentType}, ` +
@@ -137,7 +138,10 @@ export function finalizePodcastDetails(
 Total text length: ${urlMetadata.totalTextLength} characters`;
 
   const headerSection = buildHeaderSection(sourceUrl, mondayItemId, mondayItemName);
-  const finalDescription = `${headerSection}\n\n==============\n\n${notebookLmDescription}\n\n${metadataDetailsStr}`;
+
+  const instructionsSection = instructions ? `\n\n==============\n\n🎙️ Podcast instructions:\n${instructions}` : "";
+
+  const finalDescription = `${headerSection}\n\n==============\n\n${notebookLmDescription}${instructionsSection}\n\n${metadataDetailsStr}`;
 
   return {
     title: notebookLmDetails.title,

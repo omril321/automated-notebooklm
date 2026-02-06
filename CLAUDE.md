@@ -291,3 +291,9 @@ Key orchestration files:
 - Check excluded group IDs configuration
 
 This project demonstrates a production-ready automation pipeline with comprehensive error handling, intelligent prioritization, and robust monitoring capabilities for automated podcast generation at scale.
+
+## Podcast Personalization
+
+Custom podcast instructions are stored in `podcast-instructions.md` at project root.
+
+For guidance on crafting effective instructions, see `prompts/podcast-instructions-guide.md`.

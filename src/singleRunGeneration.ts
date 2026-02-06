@@ -5,6 +5,7 @@ import { ArticleMetadata } from "./monday/types";
 import { updateItemWithNotebookLmAudioLinkAndTitle } from "./monday/service";
 import { audioGenerationTracker } from "./services/audioGenerationTrackingService";
 import { INotebookLMAdapter, createNotebookLMAdapter } from "./services/notebookLMAdapter";
+import { loadPodcastInstructions } from "./podcastConfig";
 
 export type PodcastResult = {
   details: GeneratedPodcast;
@@ -124,7 +125,8 @@ export async function initializeNotebookLmWithAdapter(): Promise<{
   adapter: INotebookLMAdapter;
   cleanup: () => Promise<void>;
 }> {
-  const adapter = createNotebookLMAdapter();
+  const instructions = loadPodcastInstructions();
+  const adapter = createNotebookLMAdapter("./temp", instructions);
   await adapter.initialize();
 
   return {

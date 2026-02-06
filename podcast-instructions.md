@@ -1,0 +1,1 @@
+Speak to a senior technical audience. Go deep on insights and trade-offs. Question assumptions - if something seems one-sided, say so. Highlight what's genuinely novel vs. familiar patterns. Discuss real-world implications for engineering decisions. Skip basics, but explain unfamiliar domain concepts briefly.

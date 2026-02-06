@@ -52,9 +52,11 @@ export class CliNotebookLMAdapter implements INotebookLMAdapter {
   private currentNotebookId: string | null = null;
   private lastGeneratedTitle: string = "Untitled Podcast";
   private tempDir: string;
+  private instructions?: string;
 
-  constructor(tempDir: string = "./temp") {
+  constructor(tempDir: string = "./temp", instructions?: string) {
     this.tempDir = tempDir;
+    this.instructions = instructions;
   }
 
   async initialize(): Promise<void> {
@@ -100,7 +102,7 @@ export class CliNotebookLMAdapter implements INotebookLMAdapter {
     await cliService.waitForSource(sourceId);
 
     // Generate audio (with wait)
-    await cliService.generateAudio(undefined, true);
+    await cliService.generateAudio(this.instructions, true);
 
     // Get the title from the audio artifact (not the notebook summary)
     const artifact = await cliService.getLatestAudioArtifact();
@@ -175,10 +177,11 @@ export class CliNotebookLMAdapter implements INotebookLMAdapter {
 /**
  * Create the NotebookLM adapter (CLI-based)
  * @param tempDir Temp directory for audio downloads
+ * @param instructions Optional custom instructions for audio generation
  */
-export function createNotebookLMAdapter(tempDir: string = "./temp"): INotebookLMAdapter {
+export function createNotebookLMAdapter(tempDir: string = "./temp", instructions?: string): INotebookLMAdapter {
   info("Using CLI-based NotebookLM adapter");
-  return new CliNotebookLMAdapter(tempDir);
+  return new CliNotebookLMAdapter(tempDir, instructions);
 }
 
 /**
