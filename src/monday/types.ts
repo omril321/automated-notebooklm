@@ -17,6 +17,7 @@ export type SourceBoardItem = {
   readonly podcastFitness: number;
   readonly metadata?: ArticleMetadata;
   readonly nonPodcastable?: boolean | null;
+  readonly group: { id: string; title: string } | null;
 };
 
 export type ArticleCandidate = {

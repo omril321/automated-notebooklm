@@ -1,4 +1,4 @@
-import { GetBoardItemsOpQuery, LinkValue } from "@mondaydotcomorg/api";
+import { LinkValue } from "@mondaydotcomorg/api";
 import * as logger from "../logger";
 import { getMondayApiClient } from "./api-client";
 import { REQUIRED_COLUMNS } from "./config";
@@ -8,6 +8,20 @@ import { MondayError, MondayErrorType } from "./errors";
 
 type ColumnIdDescriptor = { id: string };
 type ColumnValue = { id: string; value?: string | null; text?: string | null } & Partial<{ display_value: string }>;
+
+// Custom response type matching our GraphQL query (includes group field)
+type BoardItemsQueryResponse = {
+  boards?: Array<{
+    items_page: {
+      items: Array<{
+        id: string;
+        name: string;
+        group: { id: string; title: string } | null;
+        column_values: Array<ColumnValue>;
+      }>;
+    };
+  }> | null;
+};
 
 const findColumn = (columnValues: ReadonlyArray<ColumnValue>, column: ColumnIdDescriptor): ColumnValue | undefined => {
   return columnValues.find((cv) => cv.id === column.id);
@@ -64,7 +78,7 @@ export async function getBoardItems({
     }
   }
 `;
-  const response = await apiClient.request<GetBoardItemsOpQuery>(query, { boardId: [boardId] });
+  const response = await apiClient.request<BoardItemsQueryResponse>(query, { boardId: [boardId] });
 
   const items = parseBoardItems(response);
 
@@ -80,13 +94,13 @@ export async function getBoardItems({
   return items;
 }
 
-function parseBoardItems(items: GetBoardItemsOpQuery): SourceBoardItem[] {
-  if (!items.boards?.[0]?.items_page?.items) {
+function parseBoardItems(response: BoardItemsQueryResponse): SourceBoardItem[] {
+  if (!response.boards?.[0]?.items_page?.items) {
     throw new Error("Unexpected response from Monday API - no items found");
   }
 
-  return items.boards[0].items_page.items.map((item) => {
-    const columnValues = item.column_values as ReadonlyArray<ColumnValue>;
+  return response.boards[0].items_page.items.map((item) => {
+    const columnValues = item.column_values;
 
     const podcastFitnessCol = findColumn(columnValues, REQUIRED_COLUMNS.podcastFitness);
     const fitnessDisplay = podcastFitnessCol?.display_value ?? "0";
@@ -114,6 +128,7 @@ function parseBoardItems(items: GetBoardItemsOpQuery): SourceBoardItem[] {
       nonPodcastable,
       type,
       generatedAudioLink,
+      group: item.group,
     };
   });
 }
