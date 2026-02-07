@@ -123,12 +123,27 @@ async function createNewEpisode(page: Page): Promise<void> {
   await page.click('button:has-text("New Episode")');
 }
 
+async function insertHtmlDescription(page: Page, htmlDescription: string): Promise<void> {
+  const selector = '*[data-placeholder="Episode Description"]';
+  await page.waitForSelector(selector);
+
+  await page.evaluate(
+    ({ sel, html }) => {
+      const editor = document.querySelector(sel);
+      if (!editor) throw new Error(`Description editor not found: ${sel}`);
+      editor.innerHTML = html;
+      editor.dispatchEvent(new Event("input", { bubbles: true }));
+    },
+    { sel: selector, html: htmlDescription }
+  );
+}
+
 async function fillEpisodeDetails(page: Page, title: string, description: string): Promise<void> {
   info(`Setting episode title: ${title}`);
   await page.fill('input[placeholder="Episode Title"]', title);
 
   info("Setting episode description...");
-  await page.fill('*[data-placeholder="Episode Description"]', description);
+  await insertHtmlDescription(page, description);
 }
 
 async function uploadAudioFile(page: Page, filePath: string): Promise<void> {

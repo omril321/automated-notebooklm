@@ -187,7 +187,8 @@ async function processSingleUpload(
     candidate.sourceUrl,
     candidate.id,
     candidate.name,
-    instructions
+    instructions,
+    true // useHtmlLinks - makes description links clickable in RedCircle
   );
 
   const converted = await convertToMp3(details, { outputDir: DEFAULT_DOWNLOADS_DIR });

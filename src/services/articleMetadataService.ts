@@ -81,6 +81,18 @@ export async function extractMetadataBatch(urls: string[]): Promise<Map<string, 
 }
 
 /**
+ * Escape special characters for safe HTML attribute usage
+ */
+function escapeHtmlForAttribute(text: string): string {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+/**
  * Build header section for podcast description with Monday item info and links
  * @param sourceUrl Original article URL
  * @param mondayItemId Optional Monday board item ID
@@ -112,13 +124,49 @@ function buildHeaderSection(sourceUrl: string, mondayItemId?: string, mondayItem
   return lines.join("\n");
 }
 
+/**
+ * Build header section with HTML anchor tags for clickable links
+ * @param sourceUrl Original article URL
+ * @param mondayItemId Optional Monday board item ID
+ * @param mondayItemName Optional Monday board item name
+ * @returns Formatted header section string with HTML links
+ */
+function buildHeaderSectionHtml(sourceUrl: string, mondayItemId?: string, mondayItemName?: string): string {
+  const lines: string[] = [];
+
+  if (mondayItemId) {
+    try {
+      const mondayItemUrl = constructMondayItemUrl(mondayItemId);
+      const escaped = escapeHtmlForAttribute(mondayItemUrl);
+      lines.push(`📋 Monday item: <a href="${escaped}">${escaped}</a>`);
+    } catch (err) {
+      warning(
+        `Failed to construct Monday item URL for item ${mondayItemId}: ${
+          err instanceof Error ? err.message : String(err)
+        }`
+      );
+    }
+  }
+
+  if (mondayItemName) {
+    const escapedName = escapeHtmlForAttribute(mondayItemName);
+    lines.push(`📌 ${escapedName}`);
+  }
+
+  const escapedSource = escapeHtmlForAttribute(sourceUrl);
+  lines.push(`🔗 Original article: <a href="${escapedSource}">${escapedSource}</a>`);
+
+  return lines.join("<br>");
+}
+
 export function finalizePodcastDetails(
   urlMetadata: ArticleMetadata,
   notebookLmDetails: { title: string; description: string },
   sourceUrl: string,
   mondayItemId?: string,
   mondayItemName?: string,
-  instructions?: string
+  instructions?: string,
+  useHtmlLinks: boolean = false
 ): { title: string; description: string } {
   info(
     `Finalizing podcast details for "${urlMetadata.title}" (Content Type: ${urlMetadata.contentType}, ` +
@@ -137,10 +185,18 @@ export function finalizePodcastDetails(
   const metadataDetailsStr = `Code content percentage: ${urlMetadata.codeContentPercentage}%
 Total text length: ${urlMetadata.totalTextLength} characters`;
 
-  const headerSection = buildHeaderSection(sourceUrl, mondayItemId, mondayItemName);
-
   const instructionsSection = instructions ? `\n\n==============\n\n🎙️ Podcast instructions:\n${instructions}` : "";
 
+  if (useHtmlLinks) {
+    const headerSection = buildHeaderSectionHtml(sourceUrl, mondayItemId, mondayItemName);
+    const rawDescription = `${headerSection}\n\n==============\n\n${notebookLmDescription}${instructionsSection}\n\n${metadataDetailsStr}`;
+    return {
+      title: notebookLmDetails.title,
+      description: rawDescription.replace(/\n/g, "<br>"),
+    };
+  }
+
+  const headerSection = buildHeaderSection(sourceUrl, mondayItemId, mondayItemName);
   const finalDescription = `${headerSection}\n\n==============\n\n${notebookLmDescription}${instructionsSection}\n\n${metadataDetailsStr}`;
 
   return {

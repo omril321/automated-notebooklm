@@ -206,6 +206,150 @@ describe("ArticleMetadataService", () => {
       expect(result.description).toContain("🔗 Original article: https://example.com/article");
       expect(result.description).not.toContain("📋 Monday item:");
     });
+
+    describe("useHtmlLinks option", () => {
+      it("should generate HTML anchor tags when useHtmlLinks is true", () => {
+        const metadata: ArticleMetadata = {
+          title: "T",
+          description: "D",
+          contentType: "Article",
+          isNonPodcastable: false,
+          codeContentPercentage: 5.0,
+          totalTextLength: 1000,
+        };
+
+        const sourceUrl = "https://example.com/article";
+        const mondayItemId = "9783190631";
+        const result = finalizePodcastDetails(
+          metadata,
+          {
+            title: "Notebook Title",
+            description: "Notebook Description",
+          },
+          sourceUrl,
+          mondayItemId,
+          undefined,
+          undefined,
+          true // useHtmlLinks
+        );
+
+        expect(result.description).toContain(
+          '🔗 Original article: <a href="https://example.com/article">https://example.com/article</a>'
+        );
+        expect(result.description).toContain(
+          '📋 Monday item: <a href="https://omril321.monday.com/boards/3549832241/pulses/9783190631">https://omril321.monday.com/boards/3549832241/pulses/9783190631</a>'
+        );
+      });
+
+      it("should use <br> instead of newlines when useHtmlLinks is true", () => {
+        const metadata: ArticleMetadata = {
+          title: "T",
+          description: "D",
+          contentType: "Article",
+          isNonPodcastable: false,
+          codeContentPercentage: 5.0,
+          totalTextLength: 1000,
+        };
+
+        const sourceUrl = "https://example.com/article";
+        const result = finalizePodcastDetails(
+          metadata,
+          {
+            title: "Notebook Title",
+            description: "Notebook Description",
+          },
+          sourceUrl,
+          undefined,
+          undefined,
+          undefined,
+          true // useHtmlLinks
+        );
+
+        expect(result.description).not.toContain("\n");
+        expect(result.description).toContain("<br>");
+      });
+
+      it("should escape special characters in URLs for HTML attributes", () => {
+        const metadata: ArticleMetadata = {
+          title: "T",
+          description: "D",
+          contentType: "Article",
+          isNonPodcastable: false,
+          codeContentPercentage: 5.0,
+          totalTextLength: 1000,
+        };
+
+        const sourceUrl = "https://example.com/article?foo=bar&baz=qux";
+        const result = finalizePodcastDetails(
+          metadata,
+          {
+            title: "Notebook Title",
+            description: "Notebook Description",
+          },
+          sourceUrl,
+          undefined,
+          undefined,
+          undefined,
+          true // useHtmlLinks
+        );
+
+        expect(result.description).toContain('href="https://example.com/article?foo=bar&amp;baz=qux"');
+      });
+
+      it("should escape mondayItemName when useHtmlLinks is true", () => {
+        const metadata: ArticleMetadata = {
+          title: "T",
+          description: "D",
+          contentType: "Article",
+          isNonPodcastable: false,
+          codeContentPercentage: 5.0,
+          totalTextLength: 1000,
+        };
+
+        const sourceUrl = "https://example.com/article";
+        const mondayItemName = 'Article with <script> & "quotes"';
+        const result = finalizePodcastDetails(
+          metadata,
+          {
+            title: "Notebook Title",
+            description: "Notebook Description",
+          },
+          sourceUrl,
+          undefined,
+          mondayItemName,
+          undefined,
+          true // useHtmlLinks
+        );
+
+        expect(result.description).toContain("📌 Article with &lt;script&gt; &amp; &quot;quotes&quot;");
+      });
+
+      it("should preserve plain text behavior when useHtmlLinks is false (default)", () => {
+        const metadata: ArticleMetadata = {
+          title: "T",
+          description: "D",
+          contentType: "Article",
+          isNonPodcastable: false,
+          codeContentPercentage: 5.0,
+          totalTextLength: 1000,
+        };
+
+        const sourceUrl = "https://example.com/article";
+        const result = finalizePodcastDetails(
+          metadata,
+          {
+            title: "Notebook Title",
+            description: "Notebook Description",
+          },
+          sourceUrl
+        );
+
+        expect(result.description).not.toContain("<a href=");
+        expect(result.description).not.toContain("<br>");
+        expect(result.description).toContain("\n");
+        expect(result.description).toContain("🔗 Original article: https://example.com/article");
+      });
+    });
   });
 
   describe("extractMetadataBatch", () => {
