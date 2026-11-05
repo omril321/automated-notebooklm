@@ -6,6 +6,7 @@ import { error, info, success, warning } from "./logger";
 import { GeneratedPodcast } from "./types";
 import { getPodcastCandidates, updateItemWithGeneratedPodcastUrl, markItemAsNonPodcastable } from "./monday/service";
 import { audioGenerationTracker } from "./services/audioGenerationTrackingService";
+import { failureTracker } from "./services/failureTrackingService";
 import { finalizePodcastDetails } from "./services/articleMetadataService";
 import { ArticleCandidate } from "./monday/types";
 import { loadPodcastInstructions } from "./podcastConfig";
@@ -57,6 +58,18 @@ async function handleGenerationFailure(
     return { url: candidate.sourceUrl, phase: "invalid_resource", message: result.error.message };
   } else {
     error(`❌ Failed ${index + 1}/${total}: ${result.error.message}`);
+
+    // Record the failure and check if we should mark as non-podcastable
+    try {
+      await failureTracker.recordFailure(candidate.sourceUrl, candidate.id, result.error.message);
+
+      if (await failureTracker.shouldMarkAsNonPodcastable(candidate.sourceUrl)) {
+        await markItemAsNonPodcastable(candidate.id);
+      }
+    } catch (trackingErr) {
+      error(`Failed to track failure for ${candidate.sourceUrl}: ${trackingErr}`);
+    }
+
     return { url: candidate.sourceUrl, phase: "generation", message: result.error.message };
   }
 }
@@ -318,7 +331,6 @@ function logBatchStart(audioReady: ArticleCandidate[], regularToProcess: Article
       .map((c) => c.metadata?.title || c.name)
       .join(", ")}`
   );
-  info(`  🔧 Using CLI-based NotebookLM (notebooklm-py)`);
 }
 
 async function processCandidatesPipeline(

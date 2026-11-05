@@ -57,6 +57,10 @@ async function runNlmCommand(
     const result = await execFileAsync(NLM_BIN, args, {
       timeout,
       maxBuffer: 10 * 1024 * 1024, // 10MB buffer for large outputs
+      env: {
+        ...process.env,
+        NLM_DISABLE_SSL_VERIFY: "1", // Bypass SSL verification for corporate proxies
+      },
     });
     return result;
   } catch (err) {
@@ -191,8 +195,15 @@ export async function addUrlSource(url: string): Promise<string> {
 
   // Parse source ID from output
   const idMatch = stdout.match(/([a-zA-Z0-9_-]{10,})/);
-  const sourceId = idMatch ? idMatch[1] : "unknown";
+  if (!idMatch) {
+    throw new NotebookLMCliError(
+      `Failed to parse source ID from CLI output. URL may not be supported: ${url}`,
+      stdout,
+      `notebooklm source add ${url}`
+    );
+  }
 
+  const sourceId = idMatch[1];
   success(`Added source: ${sourceId}`);
   return sourceId;
 }
@@ -207,8 +218,15 @@ export async function addUrlSourceToNotebook(notebookId: string, url: string): P
   });
 
   const idMatch = stdout.match(/([a-zA-Z0-9_-]{10,})/);
-  const sourceId = idMatch ? idMatch[1] : "unknown";
+  if (!idMatch) {
+    throw new NotebookLMCliError(
+      `Failed to parse source ID from CLI output. URL may not be supported: ${url}`,
+      stdout,
+      `notebooklm source add ${url}`
+    );
+  }
 
+  const sourceId = idMatch[1];
   success(`Added source: ${sourceId}`);
   return sourceId;
 }

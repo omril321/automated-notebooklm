@@ -1,5 +1,4 @@
 import * as dotenv from "dotenv";
-import { info } from "./logger";
 
 dotenv.config();
 
@@ -18,9 +17,6 @@ export function loadConfig(): Config {
   const redCircleUser = process.env.RED_CIRCLE_USER;
   const redCirclePassword = process.env.RED_CIRCLE_PASSWORD;
   const publishedPodcastName = process.env.PUBLISHED_PODCAST_NAME;
-
-  // CLI mode handles authentication separately via notebooklm-py
-  info("Using CLI-based NotebookLM (authenticate via: ./scripts/nlm login)");
 
   return {
     redCircleUser,
