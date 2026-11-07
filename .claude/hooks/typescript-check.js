@@ -1,79 +1,35 @@
 #!/usr/bin/env node
-/**
- * TypeScript Error Detection Hook
- * Checks for TypeScript compilation errors and reports them to Claude Code
- * Claude will automatically be notified to fix detected errors
- */
-
-const { execSync } = require("child_process");
+// PostToolUse hook: type-check after TS edits and feed compiler errors back to Claude.
+const { execFileSync } = require("child_process");
 const path = require("path");
+
+const TYPESCRIPT_FILE = /\.(ts|tsx)$/;
+const ANSI_CODES = /\u001b\[[0-9;]*m/g;
 
 let input = "";
 process.stdin.setEncoding("utf8");
-process.stdin.on("readable", () => {
-  const chunk = process.stdin.read();
-  if (chunk !== null) input += chunk;
-});
-
+process.stdin.on("data", (chunk) => (input += chunk));
 process.stdin.on("end", () => {
+  let filePath;
   try {
-    const hookData = JSON.parse(input);
-    const filePath = hookData.tool_input?.file_path;
+    filePath = JSON.parse(input).tool_input?.file_path;
+  } catch {
+    return;
+  }
+  if (!filePath || !TYPESCRIPT_FILE.test(path.extname(filePath))) return;
 
-    if (!filePath) {
-      // Not a file operation
-      process.exit(0);
-    }
+  try {
+    execFileSync("yarn", ["--silent", "tsc", "--noEmit"], {
+      cwd: process.env.CLAUDE_PROJECT_DIR || process.cwd(),
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+  } catch (error) {
+    const output = `${error.stdout || ""}${error.stderr || ""}`.replace(ANSI_CODES, "").trim();
+    if (!output) return;
 
-    // Only check TypeScript files
-    const ext = path.extname(filePath).toLowerCase();
-    if (!ext.match(/\.(ts|tsx)$/)) {
-      process.exit(0);
-    }
-
-    try {
-      // Run TypeScript compiler with no emit to check for errors
-      execSync("npx tsc --noEmit --pretty", {
-        stdio: ["pipe", "pipe", "pipe"],
-        encoding: "utf8",
-        cwd: process.cwd(),
-      });
-
-      // Success - no TypeScript errors
-      console.log(JSON.stringify({
-        continue: true,
-        suppressOutput: true,
-        additionalContext: "TypeScript compilation successful - no type errors detected."
-      }));
-
-    } catch (execError) {
-      const errorOutput = execError.stdout || execError.stderr || "";
-      // Remove ANSI color codes for cleaner output
-      const cleanedErrors = errorOutput.replace(/\u001b\[[0-9;]*m/g, "").trim();
-
-      if (cleanedErrors) {
-        // Count actual TypeScript errors
-        const errorMatches = cleanedErrors.match(/: error TS\d+:/g) || [];
-        const errorCount = errorMatches.length;
-
-        console.log(JSON.stringify({
-          continue: true,
-          suppressOutput: false,
-          additionalContext: `⚠️ TypeScript errors detected:\n\n${cleanedErrors}\n\nPlease fix these TypeScript errors.`,
-          systemMessage: `⚠️ TypeScript compilation found ${errorCount} error(s). Claude has been notified to address them.`
-        }));
-      } else {
-        // No actual errors, just compilation completed
-        console.log(JSON.stringify({
-          continue: true,
-          suppressOutput: true,
-          additionalContext: "TypeScript check completed successfully."
-        }));
-      }
-    }
-
-  } catch (parseError) {
-    console.error("Failed to parse hook input:", parseError.message);
-    process.exit(1);
+    console.log(
+      JSON.stringify({ decision: "block", reason: `TypeScript errors after editing ${filePath}:\n\n${output}` })
+    );
   }
 });

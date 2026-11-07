@@ -1,36 +1,25 @@
 {
   "permissions": {
     "allow": [
-      "Read(//Users/omrila/.claude/**)"
-    ],
-    "deny": [],
-    "ask": []
+      "Bash(yarn test:run:*)",
+      "Bash(yarn typecheck)",
+      "Bash(yarn build)",
+      "Bash(yarn format:*)",
+      "Bash(./scripts/nlm list:*)"
+    ]
   },
   "hooks": {
     "PostToolUse": [
       {
-        "matcher": "Write",
+        "matcher": "Write|Edit",
         "hooks": [
           {
             "type": "command",
-            "command": ".claude/hooks/prettier-format.js"
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/prettier-format.js"
           },
           {
             "type": "command",
-            "command": ".claude/hooks/typescript-check.js"
-          }
-        ]
-      },
-      {
-        "matcher": "Edit",
-        "hooks": [
-          {
-            "type": "command",
-            "command": ".claude/hooks/prettier-format.js"
-          },
-          {
-            "type": "command",
-            "command": ".claude/hooks/typescript-check.js"
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/typescript-check.js"
           }
         ]
       }
