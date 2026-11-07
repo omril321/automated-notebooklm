@@ -1,142 +1,117 @@
 # Automated NotebookLM (Concept Prototype)
 
-This repository demonstrates an experimental pipeline that automates Google NotebookLM to generate podcast audio from URLs, converts the audio to MP3, and optionally uploads an episode to RedCircle. It also includes an optional Monday.com integration to pick daily candidates.
+Turns articles you collect on a Monday.com board into podcast episodes: it picks the best candidates, generates audio with Google NotebookLM, uploads the MP3 to RedCircle, and writes the episode link back to the board.
 
-Important: This project is a concept prototype intended for educational purposes. It automates interactions that may violate Google NotebookLM and RedCircle Terms of Use. Running this project is solely at your own risk and responsibility and should only be done after reviewing the relevant Terms of Use.
+> **Important:** This is a concept prototype for educational purposes. It automates interactions that may violate the Terms of Use of Google NotebookLM and RedCircle. Use it at your own risk, and review those terms first.
 
-## Features
+## How it works
 
-- Generate NotebookLM studio podcast for a given URL using `notebooklm-py` CLI
-- Download MP3 audio directly from NotebookLM
-- Upload MP3 to RedCircle as an episode (optional)
-- Monday.com integration to prepare items and select top candidates (optional)
+```mermaid
+flowchart TD
+  subgraph Monday["Monday.com board"]
+    M1["Prepare items<br/>- URL-as-name items: set title + link<br/>- Fill missing metadata, flag non-podcastable"]
+    M2["Select candidates<br/>- fitness > 0, sorted desc, top 3"]
+    M5["Write back<br/>- Podcast link, NotebookLM link, item name"]
+    M1 --> M2
+  end
 
-## Installation
+  M2 --> N["NotebookLM (notebooklm-py CLI)<br/>- New notebook + audio, or reuse existing<br/>- Download MP3"]
+  N --> R["RedCircle (Playwright)<br/>- Upload all episodes in one session"]
+  R --> M5
+```
 
-1. Clone the repository:
+- Metadata (code percentage, text length, video detection) is extracted with Cheerio; items that are mostly code or video are flagged non-podcastable.
+- Items that already have a NotebookLM audio link reuse that notebook and don't count against the daily limit.
+- Errors are collected per item and reported at the end of the run; one failing item doesn't stop the others. After 3 failures for the same URL the item is marked non-podcastable.
+
+## Requirements
+
+- Node.js >= 24.4 and Yarn
+- Python 3.10+ and [`uv`](https://docs.astral.sh/uv/) (for the `notebooklm-py` CLI)
+- A Google account with NotebookLM access
+- Chrome (Playwright drives it for the RedCircle upload)
+- A RedCircle account with an existing podcast
+- A Monday.com board and API token
+
+## Setup
 
 ```bash
 git clone https://github.com/omril321/automated-notebooklm.git
 cd automated-notebooklm
-```
-
-2. Install dependencies:
-
-```bash
 yarn install
+
+./scripts/setup-nlm.sh   # creates .venv and installs notebooklm-py
+./scripts/nlm login      # Google OAuth in a browser
+./scripts/nlm list       # verify
+
+cp .env.example .env     # then fill it in
 ```
 
-3. Set up the NotebookLM CLI:
+### Environment variables
 
-```bash
-# Install notebooklm-py CLI (requires Python 3.10+ and uv)
-./scripts/setup-nlm.sh
+| Variable                                 | Required | Notes                                                                   |
+| ---------------------------------------- | -------- | ----------------------------------------------------------------------- |
+| `MONDAY_API_TOKEN`                       | Yes      | Personal API token with read/write on the board                         |
+| `MONDAY_BOARD_URL`                       | Yes      | `https://<account>.monday.com/boards/<id>` (view/filter suffix is fine) |
+| `MONDAY_EXCLUDED_GROUP_IDS`              | Yes      | Comma-separated group **IDs** (e.g. your "Done" group) to skip          |
+| `RED_CIRCLE_USER`, `RED_CIRCLE_PASSWORD` | Yes      | Upload runs after every successful generation                           |
+| `PUBLISHED_PODCAST_NAME`                 | Yes      | Must match the podcast image `alt` text on RedCircle                    |
 
-# Authenticate with Google (opens browser for OAuth)
-./scripts/nlm login
+Google credentials are not stored in `.env`.
 
-# Verify setup
-./scripts/nlm list
-```
+### Monday board
 
-4. Create a `.env` file for optional integrations:
+The board needs these columns; their IDs are hard-coded in [`src/monday/config.ts`](src/monday/config.ts), so edit that file to match your board.
 
-```bash
-cp .env.example .env
-```
+| Column                          | Type      | Purpose                                      |
+| ------------------------------- | --------- | -------------------------------------------- |
+| 🔗                              | Link      | Source article URL                           |
+| Type                            | Status    | Content type                                 |
+| Podcast fitness                 | Formula   | Numeric score; items with `<= 0` are skipped |
+| Metadata                        | Long text | Extracted metadata JSON                      |
+| Non-podcastable                 | Checkbox  | Exclusion flag                               |
+| Podcast link                    | Text      | Written back after upload                    |
+| NotebookLM with generated audio | Link      | Written back; enables notebook reuse         |
 
-5. Edit the `.env` file (all settings are optional):
-
-```
-# Optional: RedCircle upload
-RED_CIRCLE_USER=
-RED_CIRCLE_PASSWORD=
-PUBLISHED_PODCAST_NAME=
-
-# Optional: Monday.com integration
-MONDAY_API_TOKEN=
-MONDAY_BOARD_URL=
-MONDAY_EXCLUDED_GROUP_IDS=
-```
-
-## Contributing & Discussions
-
-This project is shared as a concept/prototype, so I’m not accepting code contributions right now. That said, I’d love to hear your thoughts and learn from your use cases. If you want to chat, brainstorm, or ask questions:
-
-- Open a GitHub Issue on this repo, or
-- Reach out via direct message
-
-Thanks for taking the time to check it out!
+The code only checks `fitness > 0`. To exclude already-published or non-podcastable items, make your **fitness formula return 0** for them.
 
 ## Usage
-
-### Generate podcasts (Monday.com mode by default)
 
 ```bash
 yarn generate-podcasts
 ```
 
-- By default, processes Monday board candidates (fitness > 0, unpublished only), sorts by fitness desc, and takes top 3 (NotebookLM daily limit). Fails fast on errors.
+This is a live run: it uses NotebookLM quota (about 3 new generations per rolling 24 hours), publishes episodes to RedCircle, and updates the board. Run `yarn test:run` for the test suite (no external services needed).
 
-### Clean up old NotebookLM projects
+### Personalizing the hosts
 
-`src/scripts/notebookLMCleanup.js` is a browser console script that deletes NotebookLM projects older than 1 week.
+Put instructions (max 500 characters) in [`podcast-instructions.md`](podcast-instructions.md). They apply to new generations only and are appended to the episode description. See [`prompts/podcast-instructions-guide.md`](prompts/podcast-instructions-guide.md).
 
-1. Navigate to https://notebooklm.google.com/
-2. Open browser DevTools (F12 or Cmd+Option+I)
-3. Go to the Console tab
-4. Copy the contents of `src/scripts/notebookLMCleanup.js` and paste into the console
-5. Press Enter to run
+### Cleaning up old NotebookLM notebooks
 
-## Architecture
+`src/scripts/notebookLMCleanup.js` is a DevTools snippet that deletes notebooks older than a week: open https://notebooklm.google.com/, open the browser console, paste the file's contents, and press Enter.
 
-```mermaid
-flowchart TD
-  A["Input: URL(s)"] --> B["Article Metadata Service (Cheerio)<br/>- Fetch HTML<br/>- Metrics: code% / text length<br/>- Detect video"]
-  B --> C["NotebookLM CLI (notebooklm-py)<br/>- Generate podcast for URL<br/>- Download audio (MP3)"]
-  C --> D["Finalize Metadata<br/>- Title/Description from NotebookLM<br/>- Append analysis details"]
-  D --> E["RedCircle (Playwright)<br/>- Upload audio file as an episode"]
-  E --> F["Output: Podcast URL"]
+### Files created while running
 
-  subgraph MondayIntegration["Optional: Monday.com Integration"]
-    direction TB
-    M0["Fetch board items"]
-    M1["Normalize URL-in-name items - Set link column + metadata"]
-    M2["Fill missing metadata for items with link"]
-    M3["Select podcast candidates - Filters: fitness > 0, unpublished only - Sort desc; take top N=3 (NotebookLM daily limit)"]
-    M4["Run main pipeline per candidate"]
-    M5["Update item with generated podcast URL (fail-fast)"]
-    M0 --> M1 --> M2 --> M3 --> M4 --> M5
-  end
-
-  M4 -.-> A
-  G -.-> M5
-```
-
-## Security Notes
-
-- Google authentication is handled via browser-based OAuth through the CLI
-- No Google credentials are stored in the `.env` file
-- The `.env` file is ignored by git and will not be committed
-
-## Requirements
-
-- Node.js >= 24.4 and Yarn
-- Python 3.10+ with `uv` package manager (for notebooklm-py CLI)
-- Google account (authenticate via `./scripts/nlm login`)
-- Chrome browser installed (Playwright uses Chrome channel for RedCircle upload)
-- RedCircle account with an existing podcast (required for upload)
+`logs/` (rate-limit and failure tracking), `temp/` and `downloads/` (MP3s and error screenshots). All are gitignored; MP3s are not cleaned up automatically.
 
 ## Limitations
 
-- CLI API stability: The `notebooklm-py` CLI uses undocumented APIs that may change without notice.
-- UI brittleness: RedCircle upload selectors may break as the site changes.
-- Long waits: NotebookLM podcast generation can take 10–12 minutes; flows use generous timeouts and fail fast on errors (no retries).
-- Daily limits: NotebookLM limits podcast generations (typically 3 per day); Monday integration respects this limit by design.
-- Monday board size: The current query caps at 500 items and throws if exactly 500 are returned; pagination or filtered queries are required for larger boards.
-- Network variability: Rate limits or account protections may interrupt automation.
-- Account risk: Review and comply with Google and RedCircle Terms of Use before any usage.
+- `notebooklm-py` relies on undocumented Google APIs and may break without notice.
+- RedCircle upload relies on page selectors that may break when the site changes.
+- Generation takes 10-12 minutes per podcast; there are generous timeouts but no automatic retries.
+- Only the top 3 candidates are considered per run, matching NotebookLM's daily limit.
+- The board query fetches 500 items and throws if it gets exactly 500 (no pagination yet).
+- `yarn generate-podcasts` disables TLS verification (`NODE_TLS_REJECT_UNAUTHORIZED=0`) as a corporate-proxy workaround; remove it from `package.json` if you don't need it.
+
+## Contributing
+
+This is a prototype, so I'm not accepting code contributions right now. I'd still love to hear about your use cases: open a GitHub issue or reach out directly.
+
+## For AI coding agents
+
+See [`AGENTS.md`](AGENTS.md).
 
 ## License
 
-ISC
+Apache-2.0, see [LICENSE](LICENSE).
