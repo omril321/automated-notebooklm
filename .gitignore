@@ -16,3 +16,6 @@ logs/
 
 # Python virtual environment for notebooklm-py CLI
 .venv/
+
+# Claude Code local overrides
+.claude/settings.local.json
