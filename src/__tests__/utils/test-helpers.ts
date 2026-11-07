@@ -1,8 +1,6 @@
 import { promises as fs } from "fs";
 import path from "path";
-import { exec } from "child_process";
 
-export const TEST_FIXTURES_DIR = path.join(__dirname, "../fixtures");
 export const TEST_OUTPUT_DIR = path.join(__dirname, "../temp-output");
 
 /**
@@ -22,13 +20,6 @@ export async function cleanupTestOutputDir(): Promise<void> {
     // Ignore cleanup errors in tests
     console.warn("Failed to cleanup test output directory:", error);
   }
-}
-
-/**
- * Get path to test fixture file
- */
-export function getTestFixturePath(filename: string): string {
-  return path.join(TEST_FIXTURES_DIR, filename);
 }
 
 /**
@@ -53,19 +44,6 @@ export async function validateFileExists(filePath: string): Promise<boolean> {
   try {
     const stats = await fs.stat(filePath);
     return stats.isFile() && stats.size > 0;
-  } catch {
-    return false;
-  }
-}
-
-/**
- * Check if FFmpeg is available in the system
- * This is for integration testing - we want to ensure FFmpeg works properly
- */
-export function checkFfmpegAvailable(): boolean {
-  try {
-    exec("ffmpeg -version");
-    return true;
   } catch {
     return false;
   }

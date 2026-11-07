@@ -1,124 +1,85 @@
-import { describe, it, expect, beforeAll, afterEach, beforeEach, vi } from "vitest";
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { promises as fs } from "fs";
 import {
   createTestOutputDir,
   cleanupTestOutputDir,
-  getTestFixturePath,
   getTestOutputPath,
   generateTestFilename,
   validateFileExists,
-  checkFfmpegAvailable,
 } from "./utils/test-helpers";
 
 import { convertToMp3 } from "../audioConversionService";
 import { GeneratedPodcast } from "../types";
-import { ArticleMetadata } from "../monday/types";
-import path from "path";
 
-const TEST_FIXTURE_FILE = "real NLM's output_for test.wav";
-
-function createTestMetadata(title: string): ArticleMetadata {
+function createPodcast(audioPath: string, title = "Test Podcast"): GeneratedPodcast {
   return {
-    title,
-    description: "Test Description",
-    contentType: "Article",
-    isNonPodcastable: false,
-    codeContentPercentage: 0,
-    totalTextLength: 1000,
+    stage: "generated",
+    metadata: {
+      title,
+      description: "Test Description",
+      contentType: "Article",
+      isNonPodcastable: false,
+      codeContentPercentage: 0,
+      totalTextLength: 1000,
+    },
+    notebookLmDetails: { title, description: "Test Description" },
+    sourceUrls: ["https://example.com"],
+    wavPath: audioPath,
   };
 }
 
 describe("audioConversionService", () => {
-  beforeAll(async () => {
-    const ffmpegAvailable = checkFfmpegAvailable();
-    if (!ffmpegAvailable) {
-      throw new Error("FFmpeg is not available. Please install FFmpeg to run audio conversion tests.");
-    }
-  });
-
   beforeEach(async () => await createTestOutputDir());
   afterEach(async () => await cleanupTestOutputDir());
 
   describe("convertToMp3", () => {
-    it("should require a valid WAV file path", async () => {
-      const podcast: GeneratedPodcast = {
-        stage: "generated",
-        metadata: createTestMetadata("Test Podcast"),
-        notebookLmDetails: {
-          title: "Test Podcast",
-          description: "Test Description",
-        },
-        sourceUrls: ["https://example.com"],
-        wavPath: "nonexistent.wav",
-      };
+    it("rejects non-MP3 input", async () => {
+      const podcast = createPodcast(getTestOutputPath("audio.wav"));
 
-      const options = {
-        outputPath: getTestOutputPath("output.mp3"),
-      };
-
-      await expect(convertToMp3(podcast, options)).rejects.toThrow();
+      await expect(convertToMp3(podcast, { outputPath: getTestOutputPath("out.mp3") })).rejects.toThrow(
+        "Unsupported audio format"
+      );
     });
 
-    it("should create single output file", async () => {
-      const outputPath = getTestOutputPath(generateTestFilename("title-test", "mp3"));
-      const inputPath = getTestFixturePath(TEST_FIXTURE_FILE);
+    it("fails when the MP3 does not exist", async () => {
+      const podcast = createPodcast(getTestOutputPath("missing.mp3"));
 
-      const podcast: GeneratedPodcast = {
-        stage: "generated",
-        metadata: createTestMetadata("Test Podcast"),
-        notebookLmDetails: {
-          title: "Test Podcast",
-          description: "Test Description",
-        },
-        sourceUrls: ["https://example.com"],
-        wavPath: inputPath,
-      };
-
-      const options = {
-        outputPath,
-      };
-
-      const result = await convertToMp3(podcast, options);
-
-      expect(result.mp3Path).toBe(outputPath);
-      expect(await validateFileExists(outputPath)).toBe(true);
-
-      // Check that only ONE file was created at the expected path
-      const files = await fs.readdir(path.dirname(outputPath));
-      const mp3Files = files.filter((f) => f.endsWith(".mp3"));
-
-      expect(mp3Files).toHaveLength(1);
-      expect(mp3Files[0]).toMatch(/title-test-\d+\.mp3/);
+      await expect(convertToMp3(podcast, { outputPath: getTestOutputPath("out.mp3") })).rejects.toThrow();
     });
 
-    it("should handle conversion options correctly", async () => {
-      const outputPath = getTestOutputPath(generateTestFilename("custom-options", "mp3"));
-      const inputPath = getTestFixturePath(TEST_FIXTURE_FILE);
+    it("copies to outputPath when given", async () => {
+      const inputPath = getTestOutputPath(generateTestFilename("input", "mp3"));
+      const outputPath = getTestOutputPath(generateTestFilename("output", "mp3"));
+      await fs.writeFile(inputPath, "fake mp3 data");
 
-      const podcast: GeneratedPodcast = {
-        stage: "generated",
-        metadata: createTestMetadata("Custom Options Test"),
-        notebookLmDetails: {
-          title: "Custom Options Test",
-          description: "Test Description",
-        },
-        sourceUrls: ["https://example.com"],
-        wavPath: inputPath,
-      };
+      const result = await convertToMp3(createPodcast(inputPath, "Custom Title"), { outputPath });
 
-      const options = {
-        outputPath,
-        bitrate: "256k",
-        quality: 2,
-        sampleRate: 22050,
-      };
-
-      const result = await convertToMp3(podcast, options);
-
-      expect(result.mp3Path).toBe(outputPath);
       expect(result.stage).toBe("converted");
-      expect(result.metadata.title).toBe("Custom Options Test");
+      expect(result.mp3Path).toBe(outputPath);
+      expect(result.metadata.title).toBe("Custom Title");
       expect(await validateFileExists(outputPath)).toBe(true);
+    });
+
+    it("copies into outputDir with a title-based filename", async () => {
+      const inputPath = getTestOutputPath(generateTestFilename("input", "mp3"));
+      await fs.writeFile(inputPath, "fake mp3 data");
+
+      const outputDir = getTestOutputPath("downloads");
+      await fs.mkdir(outputDir, { recursive: true });
+
+      const result = await convertToMp3(createPodcast(inputPath, "My Great Title"), { outputDir });
+
+      expect(result.mp3Path).toMatch(/downloads\/My_Great_Title_\d{4}-\d{2}-\d{2}\.mp3$/);
+      expect(await validateFileExists(result.mp3Path)).toBe(true);
+    });
+
+    it("keeps the input path when no destination is given", async () => {
+      const inputPath = getTestOutputPath(generateTestFilename("input", "mp3"));
+      await fs.writeFile(inputPath, "fake mp3 data");
+
+      const result = await convertToMp3(createPodcast(inputPath));
+
+      expect(result.mp3Path).toBe(inputPath);
     });
   });
 });
