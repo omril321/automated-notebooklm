@@ -28,7 +28,7 @@ Requires Node >= 24.4 (`.nvmrc`), yarn, `uv`, Chrome (RedCircle upload uses Play
 Entry: `src/scripts/generatePodcastForUrl.ts` -> `generateAndUploadFromMondayBoardCandidates()` in `src/mondayBatchOrchestrator.ts`. No flags, no single-URL mode.
 
 1. **Board prep** (`src/monday/service.ts`): items whose name is a bare URL get title + link filled in; article items missing metadata get Type / Metadata / Non-podcastable set. URLs are processed 10 at a time with 15s pauses.
-2. **Candidates**: `getPodcastCandidates(3)` keeps items with `podcastFitness > 0` and an `http` URL, sorts by fitness desc, takes the top 3.
+2. **Candidates**: `getPodcastCandidates(3)` keeps items with `podcastFitness > 0` and an `http` URL, sorts audio-ready items (see below) first, then by fitness desc, and takes the top 3.
 3. **Generate**: items with an existing NotebookLM link ("audio-ready") reuse that notebook and skip the rate limit; the rest are capped by remaining quota (`audioGenerationTrackingService`). Done through `services/notebookLMAdapter.ts` -> `services/notebookLMCliService.ts`.
 4. **Upload**: all MP3s go to RedCircle in one browser session (`redCircleService.ts`, `browserService.ts`).
 5. **Write back**: podcast link, NotebookLM link and item name are updated on Monday.
@@ -77,4 +77,3 @@ Google credentials are not in `.env`; auth lives in the `notebooklm-py` session 
 - `podcast-instructions.md` is read from `process.cwd()`, trimmed to 500 chars, applies to new generations only, and is appended to the episode description. Guide: `prompts/podcast-instructions-guide.md`.
 - `generate-podcasts` sets `NODE_TLS_REJECT_UNAUTHORIZED=0` and the CLI wrapper sets `NLM_DISABLE_SSL_VERIFY=1`: a corporate-proxy workaround that disables TLS verification for Node's own requests.
 - `notebooklm-py` uses undocumented Google APIs and can break without notice; RedCircle selectors can break when the site changes.
-- Known leftovers, not yet fixed: the top-3 cut happens before the audio-ready split, so audio-ready items are not actually prioritized; several exported helpers in `notebookLMCliService.ts` and `types.ts` are unused.

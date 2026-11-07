@@ -10,7 +10,7 @@ Turns articles you collect on a Monday.com board into podcast episodes: it picks
 flowchart TD
   subgraph Monday["Monday.com board"]
     M1["Prepare items<br/>- URL-as-name items: set title + link<br/>- Fill missing metadata, flag non-podcastable"]
-    M2["Select candidates<br/>- fitness > 0, sorted desc, top 3"]
+    M2["Select candidates<br/>- fitness > 0, audio-ready first, then fitness desc, top 3"]
     M5["Write back<br/>- Podcast link, NotebookLM link, item name"]
     M1 --> M2
   end
@@ -21,7 +21,7 @@ flowchart TD
 ```
 
 - Metadata (code percentage, text length, video detection) is extracted with Cheerio; items that are mostly code or video are flagged non-podcastable.
-- Items that already have a NotebookLM audio link reuse that notebook and don't count against the daily limit.
+- Items that already have a NotebookLM audio link reuse that notebook, don't count against the daily limit, and are picked before new ones.
 - Errors are collected per item and reported at the end of the run; one failing item doesn't stop the others. After 3 failures for the same URL the item is marked non-podcastable.
 
 ## Requirements

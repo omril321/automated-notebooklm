@@ -18,6 +18,9 @@ const toArticleCandidate = (item: SourceBoardItem): ArticleCandidate => ({
   generatedAudioLink: item.generatedAudioLink?.url ?? undefined,
 });
 
+const hasGeneratedAudio = (item: SourceBoardItem): boolean => Boolean(item.generatedAudioLink?.url);
+
+/** Audio-ready items come first (they cost no NotebookLM quota), then by fitness descending. */
 const findCandidates = (items: SourceBoardItem[]): ArticleCandidate[] => {
   return items
     .filter((item): item is SourceBoardItem => Boolean(item.podcastFitness > 0))
@@ -25,7 +28,7 @@ const findCandidates = (items: SourceBoardItem[]): ArticleCandidate[] => {
       const url = item.sourceUrlValue?.url;
       return Boolean(url?.startsWith("http"));
     })
-    .sort((a, b) => b.podcastFitness - a.podcastFitness)
+    .sort((a, b) => Number(hasGeneratedAudio(b)) - Number(hasGeneratedAudio(a)) || b.podcastFitness - a.podcastFitness)
     .map(toArticleCandidate);
 };
 

@@ -137,6 +137,39 @@ describe("Monday Service", () => {
       expect(logger.info).toHaveBeenCalledWith("Found 0 podcast candidates, returning top 0");
     });
 
+    it("should prioritize audio-ready candidates over higher-fitness new ones", async () => {
+      const item = (id: string, fitness: string, audioLink: string | null) => ({
+        id,
+        name: id,
+        column_values: [
+          { id: "source_url", value: `{"url": "https://example.com/${id}", "text": "${id}"}` },
+          { id: "podcast_fitness", display_value: fitness },
+          { id: "type", text: "Article" },
+          { id: "metadata", value: `{"title": "${id}", "contentType": "Article", "isNonPodcastable": false}` },
+          { id: "non_podcastable", value: null },
+          { id: "nlm_audio", value: audioLink && `{"url": "${audioLink}", "text": "NotebookLM"}` },
+        ],
+      });
+      mockApiClient.request.mockResolvedValue({
+        boards: [
+          {
+            items_page: {
+              items: [
+                item("new-high", "9", null),
+                item("ready-low", "2", "https://notebooklm.google.com/notebook/a"),
+                item("ready-high", "5", "https://notebooklm.google.com/notebook/b"),
+                item("new-mid", "7", null),
+              ],
+            },
+          },
+        ],
+      });
+
+      const result = await getPodcastCandidates(3);
+
+      expect(result.map((c) => c.id)).toEqual(["ready-high", "ready-low", "new-high"]);
+    });
+
     it("should return top candidates with valid URLs and podcast fitness", async () => {
       // Override default mock to have items with good podcast fitness
       mockApiClient.request.mockResolvedValue({
