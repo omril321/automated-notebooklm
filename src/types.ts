@@ -56,36 +56,6 @@ export interface UploadedPodcast extends Omit<ConvertedPodcast, "stage"> {
 }
 
 /**
- * Create a new podcast intention
- */
-export function createPodcastIntention(sourceUrl: string, metadata: ArticleMetadata): PodcastIntention {
-  return {
-    stage: "intention",
-    sourceUrls: [sourceUrl],
-    metadata,
-  };
-}
-
-/**
- * Progress details to generated stage
- */
-export function toGeneratedPodcast(
-  intention: PodcastIntention,
-  wavPath: string,
-  notebookLmDetails: {
-    title: string;
-    description: string;
-  }
-): GeneratedPodcast {
-  return {
-    ...intention,
-    stage: "generated",
-    wavPath,
-    notebookLmDetails,
-  };
-}
-
-/**
  * Progress details to converted stage
  */
 export function toConvertedPodcast(generated: GeneratedPodcast, mp3Path: string): ConvertedPodcast {

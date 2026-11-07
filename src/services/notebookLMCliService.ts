@@ -11,25 +11,7 @@ const NLM_BIN = join(PROJECT_ROOT, ".venv", "bin", "notebooklm");
 
 // Timeout constants
 const DEFAULT_TIMEOUT_MS = 60_000; // 1 minute for most operations
-const AUDIO_GENERATION_TIMEOUT_MS = 15 * 60 * 1000; // 15 minutes for audio generation
 const SOURCE_ADD_TIMEOUT_MS = 2 * 60 * 1000; // 2 minutes for adding sources
-
-export type NotebookInfo = {
-  id: string;
-  title: string;
-};
-
-export type SourceInfo = {
-  id: string;
-  title: string;
-  type: string;
-};
-
-export type NotebookDetails = {
-  id: string;
-  title: string;
-  sources: SourceInfo[];
-};
 
 export type AudioGenerationResult = {
   taskId?: string;
@@ -103,55 +85,6 @@ export async function checkAuth(): Promise<boolean> {
 }
 
 /**
- * List all notebooks (read-only, safe for testing)
- */
-export async function listNotebooks(): Promise<NotebookInfo[]> {
-  info("Fetching notebook list from NotebookLM CLI...");
-  const { stdout } = await runNlmCommand(["list"]);
-
-  // Parse the output - notebooklm list returns formatted text
-  // Format: "ID: <id> | Title: <title>" or similar
-  const lines = stdout.trim().split("\n").filter(Boolean);
-  const notebooks: NotebookInfo[] = [];
-
-  for (const line of lines) {
-    // Try to parse each line as notebook info
-    // The exact format depends on CLI output
-    const idMatch = line.match(/(?:ID:\s*)?([a-zA-Z0-9_-]+)/);
-    const titleMatch = line.match(/(?:Title:\s*|:\s+)(.+)$/);
-
-    if (idMatch && titleMatch) {
-      notebooks.push({
-        id: idMatch[1],
-        title: titleMatch[1].trim(),
-      });
-    }
-  }
-
-  success(`Found ${notebooks.length} notebooks`);
-  return notebooks;
-}
-
-/**
- * Get the current status/context
- */
-export async function getStatus(): Promise<{
-  activeNotebook?: string;
-  authenticated: boolean;
-}> {
-  try {
-    const { stdout } = await runNlmCommand(["status", "--json"]);
-    const result = JSON.parse(stdout);
-    return {
-      activeNotebook: result.notebook?.id,
-      authenticated: result.authenticated ?? false,
-    };
-  } catch {
-    return { authenticated: false };
-  }
-}
-
-/**
  * Create a new notebook
  * @returns The notebook ID
  */
@@ -194,29 +127,6 @@ export async function addUrlSource(url: string): Promise<string> {
   });
 
   // Parse source ID from output
-  const idMatch = stdout.match(/([a-zA-Z0-9_-]{10,})/);
-  if (!idMatch) {
-    throw new NotebookLMCliError(
-      `Failed to parse source ID from CLI output. URL may not be supported: ${url}`,
-      stdout,
-      `notebooklm source add ${url}`
-    );
-  }
-
-  const sourceId = idMatch[1];
-  success(`Added source: ${sourceId}`);
-  return sourceId;
-}
-
-/**
- * Add a URL source to a specific notebook (without needing to select it first)
- */
-export async function addUrlSourceToNotebook(notebookId: string, url: string): Promise<string> {
-  info(`Adding URL source to notebook ${notebookId}: ${url}`);
-  const { stdout } = await runNlmCommand(["source", "add", url, "--notebook", notebookId], {
-    timeout: SOURCE_ADD_TIMEOUT_MS,
-  });
-
   const idMatch = stdout.match(/([a-zA-Z0-9_-]{10,})/);
   if (!idMatch) {
     throw new NotebookLMCliError(
@@ -354,23 +264,6 @@ export async function generateAudio(instructions?: string, wait: boolean = true)
 }
 
 /**
- * Generate audio for a specific notebook
- */
-export async function generateAudioForNotebook(
-  notebookId: string,
-  instructions?: string,
-  wait: boolean = true
-): Promise<AudioGenerationResult> {
-  info(`Generating audio for notebook ${notebookId}...`);
-
-  // Select the notebook first
-  await useNotebook(notebookId);
-
-  // Use the standard generateAudio which handles waiting properly
-  return generateAudio(instructions, wait);
-}
-
-/**
  * Download the latest audio file
  * @param outputPath Path to save the MP3 file
  * @returns The path to the downloaded file
@@ -380,20 +273,6 @@ export async function downloadAudio(outputPath: string): Promise<string> {
 
   await runNlmCommand(["download", "audio", outputPath, "--latest"], {
     timeout: 5 * 60 * 1000, // 5 minutes for download
-  });
-
-  success(`Audio downloaded to: ${outputPath}`);
-  return outputPath;
-}
-
-/**
- * Download audio from a specific notebook
- */
-export async function downloadAudioFromNotebook(notebookId: string, outputPath: string): Promise<string> {
-  info(`Downloading audio from notebook ${notebookId} to: ${outputPath}`);
-
-  await runNlmCommand(["download", "audio", outputPath, "--latest", "--notebook", notebookId], {
-    timeout: 5 * 60 * 1000,
   });
 
   success(`Audio downloaded to: ${outputPath}`);
@@ -430,53 +309,4 @@ export async function setLanguage(languageCode: string): Promise<void> {
 export async function clearContext(): Promise<void> {
   await runNlmCommand(["clear"]);
   info("Cleared active notebook context");
-}
-
-/**
- * Full workflow: Create notebook, add URL, generate audio, download
- * Returns the path to the downloaded MP3 file
- */
-export async function createPodcastFromUrl(
-  url: string,
-  outputPath: string,
-  options: {
-    title?: string;
-    instructions?: string;
-    language?: string;
-  } = {}
-): Promise<{ notebookId: string; mp3Path: string; title: string }> {
-  const { title = "Podcast", instructions, language = "en" } = options;
-
-  // Create notebook
-  const notebookId = await createNotebook(title);
-
-  // Select it
-  await useNotebook(notebookId);
-
-  // Set language if specified
-  if (language && language !== "en") {
-    await setLanguage(language);
-  }
-
-  // Add URL source
-  const sourceId = await addUrlSource(url);
-
-  // Wait for source to be processed
-  await waitForSource(sourceId);
-
-  // Generate audio (with wait)
-  await generateAudio(instructions, true);
-
-  // Download the audio
-  const mp3Path = await downloadAudio(outputPath);
-
-  return { notebookId, mp3Path, title };
-}
-
-/**
- * Resume from existing notebook - just download audio
- */
-export async function downloadAudioFromExisting(notebookId: string, outputPath: string): Promise<string> {
-  await useNotebook(notebookId);
-  return await downloadAudio(outputPath);
 }

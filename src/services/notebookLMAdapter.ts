@@ -183,10 +183,3 @@ export function createNotebookLMAdapter(tempDir: string = "./temp", instructions
   info("Using CLI-based NotebookLM adapter");
   return new CliNotebookLMAdapter(tempDir, instructions);
 }
-
-/**
- * Type guard to check if using CLI adapter
- */
-export function isCliAdapter(adapter: INotebookLMAdapter): adapter is CliNotebookLMAdapter {
-  return adapter instanceof CliNotebookLMAdapter;
-}
